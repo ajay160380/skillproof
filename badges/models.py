@@ -22,3 +22,14 @@ class Badge(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.skill_category.name} ({self.badge_level})"
+
+class UserStats(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='gamification_stats')
+    total_points = models.IntegerField(default=0)
+    current_streak = models.IntegerField(default=0)
+    highest_streak = models.IntegerField(default=0)
+    global_rank = models.IntegerField(null=True, blank=True)
+    last_activity_date = models.DateField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.email} - Points: {self.total_points}"

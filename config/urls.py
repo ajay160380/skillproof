@@ -36,7 +36,7 @@ urlpatterns = [
     path('api/assessments/', include('assessments.urls')),
     path('api/badges/', include('badges.urls')),
     path('api/marketplace/', include('marketplace.urls')),
-    path('api/network/', include('marketplace.network_urls')),
+    path('api/network/', include('network.urls')),
     path('api/resumes/', include('resumes.urls')),
     path('api/jobs/', include('jobs.urls')),
     path('api/portfolio/', include('portfolio.urls')),
