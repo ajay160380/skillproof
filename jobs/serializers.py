@@ -34,11 +34,15 @@ class JobApplicationSerializer(serializers.ModelSerializer):
 
 class JobApplicantSerializer(serializers.ModelSerializer):
     candidate_email = serializers.CharField(source='candidate.email', read_only=True)
+    candidate_name = serializers.CharField(source='candidate.full_name', read_only=True)
     candidate_id = serializers.IntegerField(source='candidate.id', read_only=True)
+    candidate_avatar = serializers.CharField(source='candidate.avatar_url', read_only=True, default='')
+    
+    # Optional: include badges if requested, or just rely on public badges API
     
     class Meta:
         model = JobApplication
-        fields = ['id', 'candidate_id', 'candidate_email', 'status', 'overall_fit_score', 'completed_at']
+        fields = ['id', 'candidate_id', 'candidate_name', 'candidate_email', 'candidate_avatar', 'status', 'overall_fit_score', 'completed_at']
 
 from skills.models import SkillCategory
 from skills.serializers import SkillCategorySerializer
@@ -58,3 +62,25 @@ class CompanyRequirementSerializer(serializers.ModelSerializer):
         fields = ['id', 'recruiter_name', 'company_name', 'company_description', 'required_skills', 'required_skill_ids', 'preferred_min_score', 'updated_at']
         read_only_fields = ['id', 'updated_at']
 
+from .models import DirectInvite, Interview
+
+class DirectInviteSerializer(serializers.ModelSerializer):
+    recruiter_name = serializers.CharField(source='recruiter.full_name', read_only=True)
+    candidate_name = serializers.CharField(source='candidate.full_name', read_only=True)
+    job_role = serializers.CharField(source='job_listing.role_title', read_only=True)
+
+    class Meta:
+        model = DirectInvite
+        fields = ['id', 'recruiter', 'recruiter_name', 'candidate', 'candidate_name', 'job_listing', 'job_role', 'message', 'is_accepted', 'created_at']
+        read_only_fields = ['id', 'is_accepted', 'created_at']
+
+class InterviewSerializer(serializers.ModelSerializer):
+    recruiter_name = serializers.CharField(source='recruiter.full_name', read_only=True)
+    recruiter_company = serializers.CharField(source='recruiter.company_name', read_only=True)
+    candidate_name = serializers.CharField(source='candidate.full_name', read_only=True)
+    job_role = serializers.CharField(source='job_listing.role_title', read_only=True)
+
+    class Meta:
+        model = Interview
+        fields = ['id', 'recruiter', 'recruiter_name', 'recruiter_company', 'candidate', 'candidate_name', 'job_listing', 'job_role', 'proposed_time', 'status', 'message', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
