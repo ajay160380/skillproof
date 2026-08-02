@@ -50,3 +50,28 @@ class CheckUsernameView(generics.GenericAPIView):
             
         exists = User.objects.filter(username__iexact=username).exists()
         return Response({"available": not exists}, status=status.HTTP_200_OK)
+
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from badges.models import Badge
+from badges.serializers import BadgeSerializer
+
+class PublicProfileView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, username, *args, **kwargs):
+        try:
+            user = User.objects.get(username__iexact=username, role='candidate')
+        except User.DoesNotExist:
+            return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Serialize user data
+        serializer = UserSerializer(user)
+        data = serializer.data
+        
+        # Add public badges
+        badges = Badge.objects.filter(user=user, is_public=True)
+        badge_serializer = BadgeSerializer(badges, many=True)
+        data['public_badges'] = badge_serializer.data
+        
+        return Response(data, status=status.HTTP_200_OK)

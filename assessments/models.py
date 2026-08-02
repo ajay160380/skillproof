@@ -18,6 +18,7 @@ class TestAttempt(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     recording_url = models.URLField(max_length=500, null=True, blank=True)
     code_submission = models.TextField(null=True, blank=True)
+    project_url = models.URLField(max_length=500, null=True, blank=True)
     keystroke_log = models.JSONField(null=True, blank=True)
     raw_transcript = models.TextField(null=True, blank=True)
 

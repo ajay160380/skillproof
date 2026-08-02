@@ -16,6 +16,11 @@ def process_test_attempt(attempt_id: int):
         if attempt.status != 'processing':
             return
             
+        keystroke_log = attempt.keystroke_log or {}
+        frontend_cheating_flags = {}
+        if isinstance(keystroke_log, dict):
+            frontend_cheating_flags = keystroke_log.pop('frontend_cheating_flags', {})
+
         if attempt.test.test_type == 'communication':
             # In a real app we'd download the audio file from attempt.recording_url or S3.
             # For local demo, we assume attempt.recording_url is a local path or we have a test file.
@@ -40,11 +45,14 @@ def process_test_attempt(attempt_id: int):
                 metrics['filler_word_count'], 
                 metrics['words_per_minute'], 
                 metrics['avg_sentence_length'],
-                attempt.keystroke_log
+                keystroke_log
             )
             
             score_val = result.get('overall_score', 0)
             
+            final_cheating_flags = result.get("cheating_flags", {}) or {}
+            final_cheating_flags.update(frontend_cheating_flags)
+
             score = SkillScore.objects.create(
                 attempt=attempt,
                 overall_score=score_val,
@@ -54,7 +62,7 @@ def process_test_attempt(attempt_id: int):
                     "structure": result.get("structure", 0)
                 },
                 ai_feedback_text=result.get("feedback", ""),
-                cheating_flags=result.get("cheating_flags", None),
+                cheating_flags=final_cheating_flags,
                 scoring_method=result.get("scoring_method", "ai")
             )
             
@@ -107,11 +115,12 @@ def process_test_attempt(attempt_id: int):
                 else:
                     test_pass_rate = 0.0 # Deliberately wrong
             
-            keystroke_log = attempt.keystroke_log or {}
-            
             result = score_coding_test(code, test_pass_rate, pylint_score, keystroke_log)
             score_val = result.get('overall_score', 0)
             
+            final_cheating_flags = result.get("cheating_flags", {}) or {}
+            final_cheating_flags.update(frontend_cheating_flags)
+
             score = SkillScore.objects.create(
                 attempt=attempt,
                 overall_score=score_val,
@@ -121,7 +130,7 @@ def process_test_attempt(attempt_id: int):
                     "debugging_approach": result.get("debugging_approach", 0)
                 },
                 ai_feedback_text=result.get("feedback", ""),
-                cheating_flags=result.get("cheating_flags", None),
+                cheating_flags=final_cheating_flags,
                 scoring_method=result.get("scoring_method", "ai")
             )
             

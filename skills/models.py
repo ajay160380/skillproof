@@ -26,6 +26,7 @@ class SkillTest(models.Model):
         ('coding', 'Coding'),
         ('communication', 'Communication'),
         ('screen_task', 'Screen Task'),
+        ('practical', 'Practical Project'),
     )
 
     category = models.ForeignKey(SkillCategory, on_delete=models.CASCADE, related_name='tests')
