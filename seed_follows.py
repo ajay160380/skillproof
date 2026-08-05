@@ -1,5 +1,7 @@
 import os
 import django
+
+# Script to seed the database with sample followers (recruiters following a candidate)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
