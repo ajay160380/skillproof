@@ -8,6 +8,9 @@ class EmailOrUsernameModelBackend(ModelBackend):
     because USERNAME_FIELD is 'email'.
     """
     def authenticate(self, request, username=None, password=None, **kwargs):
+        """
+        Authenticate a user based on email or username.
+        """
         UserModel = get_user_model()
         
         # In our setup, SimpleJWT receives {"email": "user_input", "password": "..."}
