@@ -2,6 +2,9 @@ from django.db import models
 from django.utils.text import slugify
 
 class SkillCategory(models.Model):
+    """
+    Model representing a category of skills (e.g., Programming, Design).
+    """
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True, blank=True)
     icon = models.CharField(max_length=50)
@@ -16,7 +19,13 @@ class SkillCategory(models.Model):
     def __str__(self):
         return self.name
 
+    class Meta:
+        verbose_name_plural = "Skill Categories"
+
 class SkillTest(models.Model):
+    """
+    Model representing a specific skill assessment or test.
+    """
     DIFFICULTY_CHOICES = (
         ('easy', 'Easy'),
         ('medium', 'Medium'),
