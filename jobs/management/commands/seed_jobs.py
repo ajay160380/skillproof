@@ -24,6 +24,8 @@ class Command(BaseCommand):
             company_name="TechCorp Inc.",
             role_title="Frontend Developer",
             description="We are looking for a strong frontend developer who has verified skills in both coding and communication. You will work on our core React application.",
+            location="San Francisco, CA (Remote)",
+            salary_range="$120k - $150k",
         )
         
         job.required_tests.set(tests)
