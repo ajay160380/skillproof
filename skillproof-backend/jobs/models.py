@@ -7,6 +7,8 @@ class JobListing(models.Model):
     company_name = models.CharField(max_length=255)
     role_title = models.CharField(max_length=255)
     description = models.TextField()
+    location = models.CharField(max_length=255, blank=True, null=True)
+    salary_range = models.CharField(max_length=100, blank=True, null=True)
     required_tests = models.ManyToManyField(SkillTest, related_name='job_listings')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
