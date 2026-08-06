@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
-export function PracticalTest({ testId, testData, onSubmit }: any) {
+interface TestData {
+  title: string;
+  instructions?: string;
+  problem_statement?: string;
+}
+
+interface PracticalTestProps {
+  testId: string;
+  testData: TestData;
+  onSubmit: (data: { project_url: string }) => void;
+}
+
+export function PracticalTest({ testId, testData, onSubmit }: PracticalTestProps) {
   const [projectUrl, setProjectUrl] = useState('');
   
   const submitTest = () => {
