@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  /* Premium Light Mode Palette */
+  --color-vellum: #FBFBFA; /* Clean, soft white background */
+  --color-ink: #0F172A; /* Deep slate for crisp readable text */
+  --color-verification: #10B981; /* Vibrant Emerald for success */
+  --color-seal: #F43F5E; /* Vibrant Rose for alerts */
+  --color-data: #64748B; /* Slate gray for secondary text */
+  --color-structure: #E2E8F0; /* Soft borders */
+  --color-platinum: #F1F5F9;
+  --color-gold: #F59E0B;
+  --color-silver: #94A3B8;
+  --color-bronze: #D97706;
+
+  --font-sans: "Inter", "Public Sans", sans-serif;
+  --font-serif: "DM Serif Display", serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+/* Reset and Base Styles */
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+}
+body {
+  background-color: var(--color-vellum);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-image: 
+    radial-gradient(at 15% 50%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(at 85% 30%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* 1px Structural Borders */
+.border-structure {
+  border-color: var(--color-structure);
+}
+
+.bg-structure {
+  background-color: var(--color-structure);
+}
+
+/* Hide scrollbar for clean dossier look but keep functionality */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-vellum); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-structure); 
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-data); 
+}
+
+/* Custom Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+
+/* Subtle animated gradient background without scroll lag */
+.bg-mesh {
+  position: relative;
+}
+.bg-mesh::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image: 
+    radial-gradient(at 40% 20%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, rgba(244, 63, 94, 0.03) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+  pointer-events: none;
+}
