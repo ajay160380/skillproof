@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    SearchCandidatesView, FollowUserView, UnfollowUserView, 
+    SearchNetworkView, FollowUserView, UnfollowUserView, 
     MyFollowingView, MyFollowersView, PostViewSet, CommentViewSet
 )
 
@@ -14,7 +14,7 @@ router.register(r'posts', PostViewSet, basename='post')
 # So we'll register comments specifically or just use standard paths.
 
 urlpatterns = [
-    path('search-candidates/', SearchCandidatesView.as_view(), name='search_candidates'),
+    path('search/', SearchNetworkView.as_view(), name='search_network'),
     path('follow-user/', FollowUserView.as_view(), name='follow_user'),
     path('unfollow-user/<int:user_id>/', UnfollowUserView.as_view(), name='unfollow_user'),
     path('my-following/', MyFollowingView.as_view(), name='my_following'),

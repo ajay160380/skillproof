@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { api } from '../../services/api';
 
@@ -7,19 +8,22 @@ const itemVariants: any = {
   show: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
-export const FindCandidatesWidget = () => {
+export const NetworkDiscoveryWidget = () => {
   const [query, setQuery] = useState('');
-  const [candidates, setCandidates] = useState<any[]>([]);
+  const [role, setRole] = useState<'all' | 'candidate' | 'recruiter'>('all');
+  const [users, setUsers] = useState<any[]>([]);
   const [followingIds, setFollowingIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const fetchCandidates = async (searchQuery = '') => {
+  const fetchUsers = async (searchQuery = '', searchRole = role) => {
     try {
       setLoading(true);
-      const res = await api.get(`/network/search-candidates/?q=${searchQuery}`);
-      setCandidates(res.data.results || res.data);
+      const roleQuery = searchRole === 'all' ? '' : `&role=${searchRole}`;
+      const res = await api.get(`/network/search/?q=${searchQuery}${roleQuery}`);
+      setUsers(res.data.results || res.data);
     } catch (err) {
-      console.error('Failed to fetch candidates:', err);
+      console.error('Failed to fetch users:', err);
     } finally {
       setLoading(false);
     }
@@ -36,13 +40,13 @@ export const FindCandidatesWidget = () => {
   };
 
   useEffect(() => {
-    fetchCandidates();
+    fetchUsers(query, role);
     fetchFollowing();
-  }, []);
+  }, [role]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchCandidates(query);
+    fetchUsers(query, role);
   };
 
   const toggleFollow = async (userId: number) => {
@@ -59,74 +63,151 @@ export const FindCandidatesWidget = () => {
         setFollowingIds(newIds);
       }
     } catch (err) {
-      console.error('Failed to toggle follow:', err);
+      console.error('Failed to follow/unfollow:', err);
+    }
+  };
+
+  const handleMessage = async (userId: number) => {
+    try {
+      const res = await api.post('/messages/start-conversation/', { recipient_id: userId });
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.set('tab', 'Messages');
+      currentParams.set('conversation', res.data.id);
+      navigate(`?${currentParams.toString()}`);
+    } catch (err) {
+      console.error('Failed to start conversation:', err);
+      alert('Unable to start conversation. Make sure you are following each other.');
     }
   };
 
   return (
-    <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-8 shadow-sm">
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="relative">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search candidates by name or username..."
-            className="w-full bg-white border border-structure/30 rounded-xl py-3 pl-12 pr-4 font-serif text-ink focus:outline-none focus:border-verification focus:ring-1 focus:ring-verification transition-all"
-          />
-          <span className="absolute left-4 top-3.5 opacity-50">🔍</span>
-          <button type="submit" className="absolute right-2 top-2 bg-ink text-white font-mono text-[10px] uppercase tracking-widest px-4 py-1.5 rounded-lg hover:bg-ink/80 transition-colors">
-            Search
-          </button>
+    <div className="space-y-6">
+      {/* Search Header */}
+      <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 md:p-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+          <div className="flex bg-structure/5 p-1 rounded-xl w-full md:w-auto">
+            {['all', 'candidate', 'recruiter'].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRole(r as any)}
+                className={`flex-1 md:px-6 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${
+                  role === r
+                    ? 'bg-white shadow-sm text-ink'
+                    : 'text-data hover:text-ink'
+                }`}
+              >
+                {r === 'all' ? 'All Users' : r === 'candidate' ? 'Candidates' : 'Recruiters'}
+              </button>
+            ))}
+          </div>
         </div>
-      </form>
 
+        <form onSubmit={handleSearch}>
+          <div className="relative group">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by name, company, or headline..."
+              className="w-full bg-white border border-structure/20 rounded-xl py-4 pl-12 pr-32 font-serif text-lg text-ink focus:outline-none focus:border-verification focus:ring-4 focus:ring-verification/10 transition-all shadow-sm group-hover:border-structure/40"
+            />
+            <span className="absolute left-4 top-4 text-xl opacity-40">🔍</span>
+            <button type="submit" className="absolute right-2 top-2 bg-ink text-white font-mono text-[10px] uppercase tracking-widest px-6 py-2.5 rounded-lg hover:bg-ink/80 transition-all shadow-md active:scale-95">
+              Search
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Results Grid */}
       {loading ? (
-        <div className="text-center py-12">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-data">Searching...</p>
+        <div className="text-center py-20 bg-white/40 backdrop-blur-md rounded-2xl border border-structure/20">
+          <div className="w-8 h-8 border-4 border-structure/20 border-t-verification rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-data">Discovering network...</p>
         </div>
-      ) : candidates.length === 0 ? (
-        <div className="text-center py-12 bg-structure/5 rounded-2xl border border-dashed border-structure/20">
-          <span className="text-4xl mb-4 block opacity-50">👥</span>
-          <h3 className="font-serif text-lg font-bold text-ink mb-2">No candidates found</h3>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-data">Try adjusting your search terms.</p>
+      ) : users.length === 0 ? (
+        <div className="text-center py-20 bg-white/40 backdrop-blur-md rounded-2xl border border-dashed border-structure/30">
+          <span className="text-5xl mb-4 block opacity-30">🌐</span>
+          <h3 className="font-serif text-xl font-bold text-ink mb-2">No users found</h3>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-data">Try adjusting your search terms or filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {candidates.map(candidate => {
-            const isFollowing = followingIds.has(candidate.id);
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {users.map((user) => {
+            const isFollowing = followingIds.has(user.id);
             return (
-              <motion.div key={candidate.id} variants={itemVariants} className="bg-white p-6 rounded-xl border border-structure/20 shadow-sm flex flex-col justify-between">
-                <div className="flex items-start gap-4 mb-4">
-                  {candidate.avatar_url ? (
-                    <img src={candidate.avatar_url} alt={candidate.full_name} className="w-12 h-12 rounded-full object-cover border border-structure/20" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-structure/10 flex items-center justify-center font-serif font-bold text-ink">
-                      {(candidate.full_name || candidate.username)[0].toUpperCase()}
-                    </div>
+              <motion.div 
+                key={user.id} 
+                variants={itemVariants}
+                className="group relative bg-white/80 backdrop-blur-xl rounded-2xl border border-structure/20 shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden transition-all duration-300 flex flex-col"
+              >
+                {/* Cover Image or Gradient */}
+                <div className="h-24 w-full bg-gradient-to-r from-structure/20 to-structure/5 relative">
+                  {user.cover_image && (
+                    <img src={user.cover_image} alt="cover" className="w-full h-full object-cover" />
                   )}
-                  <div className="flex-1 min-w-0">
-                    <a href={`/profile/${candidate.username}`} className="font-serif font-bold text-ink hover:text-verification transition-colors block truncate">
-                      {candidate.full_name || candidate.username}
-                    </a>
-                    <p className="font-mono text-[10px] text-data mt-0.5 truncate">{candidate.company_name || 'Open to opportunities'}</p>
-                    {candidate.is_verified && (
-                      <span className="inline-block mt-2 font-mono text-[8px] uppercase tracking-widest text-verification bg-verification/10 px-2 py-0.5 rounded-full font-bold">
-                        Verified
-                      </span>
-                    )}
+                  {/* Role Badge */}
+                  <div className="absolute top-3 right-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full font-mono text-[8px] uppercase tracking-widest font-bold shadow-sm">
+                    {user.role === 'candidate' ? '👤 Candidate' : '🏢 Recruiter'}
                   </div>
                 </div>
-                <button
-                  onClick={() => toggleFollow(candidate.id)}
-                  className={`w-full py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest font-bold transition-all ${
-                    isFollowing 
-                      ? 'bg-structure/10 text-ink hover:bg-structure/20' 
-                      : 'bg-ink text-white hover:bg-ink/90'
-                  }`}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
+
+                {/* Profile Content */}
+                <div className="px-6 pb-6 pt-0 flex-1 flex flex-col relative">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="-mt-10 mb-2 relative">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.full_name} className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md bg-white" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-structure/10 border-4 border-white flex items-center justify-center font-serif text-2xl font-bold text-ink shadow-md">
+                          {(user.full_name || user.username)[0].toUpperCase()}
+                        </div>
+                      )}
+                      {user.is_verified && (
+                        <div className="absolute bottom-0 right-0 bg-verification text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm" title="Verified">
+                          ✓
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <a href={`/profile/${user.username}`} className="font-serif font-bold text-xl text-ink hover:text-verification transition-colors truncate">
+                    {user.full_name || user.username}
+                  </a>
+                  <p className="font-serif text-sm text-ink/70 mt-1 line-clamp-2 min-h-[40px]">
+                    {user.headline || (user.role === 'recruiter' ? 'Talent Acquisition' : 'Open to opportunities')}
+                  </p>
+                  
+                  <div className="mt-4 pt-4 border-t border-structure/10 flex items-center gap-2 text-data font-mono text-[9px] uppercase tracking-widest mb-6">
+                    {user.company_name ? (
+                      <><span>🏢</span> <span className="truncate">{user.company_name}</span></>
+                    ) : user.location ? (
+                      <><span>📍</span> <span className="truncate">{user.location}</span></>
+                    ) : (
+                      <><span>🌐</span> <span className="truncate">SkillProof Network</span></>
+                    )}
+                  </div>
+
+                  <div className="mt-auto flex gap-2">
+                    <button
+                      onClick={() => toggleFollow(user.id)}
+                      className={`flex-1 py-2 rounded-xl font-mono text-[10px] uppercase tracking-widest font-bold transition-all shadow-sm active:scale-95 ${
+                        isFollowing 
+                          ? 'bg-structure/10 text-ink hover:bg-structure/20' 
+                          : 'bg-ink text-white hover:bg-ink/90 hover:shadow-md'
+                      }`}
+                    >
+                      {isFollowing ? '✓ Following' : '+ Follow'}
+                    </button>
+                    <button
+                      onClick={() => handleMessage(user.id)}
+                      className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-structure/10 text-ink hover:bg-structure/20 rounded-xl transition-colors active:scale-95"
+                      title="Message"
+                    >
+                      💬
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             );
           })}
@@ -261,7 +342,7 @@ export const PostComponent = ({ post, onLike, onDelete }: { post: any, onLike: (
   );
 };
 
-export const FeedWidget = ({ authorId }: { authorId?: string | number }) => {
+export const FeedWidget = ({ authorId, hidePostInput = false }: { authorId?: string | number, hidePostInput?: boolean }) => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
@@ -334,54 +415,56 @@ export const FeedWidget = ({ authorId }: { authorId?: string | number }) => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm mb-8">
-        <form onSubmit={handlePost}>
-          <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Share an update, achievement, or question..."
-            className="w-full bg-white border border-structure/20 rounded-xl p-4 font-serif text-ink focus:outline-none focus:border-verification min-h-[100px] resize-none mb-4"
-          />
-          {image && (
-            <div className="relative mb-4 inline-block">
-              <img src={URL.createObjectURL(image)} alt="Preview" className="max-h-40 rounded-lg border border-structure/20" />
+      {!hidePostInput && (
+        <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm mb-8">
+          <form onSubmit={handlePost}>
+            <textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Share an update, achievement, or question..."
+              className="w-full bg-white border border-structure/20 rounded-xl p-4 font-serif text-ink focus:outline-none focus:border-verification min-h-[100px] resize-none mb-4"
+            />
+            {image && (
+              <div className="relative mb-4 inline-block">
+                <img src={URL.createObjectURL(image)} alt="Preview" className="max-h-40 rounded-lg border border-structure/20" />
+                <button 
+                  type="button" 
+                  onClick={() => setImage(null)}
+                  className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-bold shadow-md hover:bg-red-600 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <div>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={fileInputRef} 
+                  onChange={(e) => e.target.files && setImage(e.target.files[0])}
+                  className="hidden" 
+                />
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-data hover:text-ink transition-colors flex items-center gap-2"
+                >
+                  <span className="text-xl">📷</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest font-bold">Image</span>
+                </button>
+              </div>
               <button 
-                type="button" 
-                onClick={() => setImage(null)}
-                className="absolute -top-2 -right-2 bg-white text-ink rounded-full w-6 h-6 flex items-center justify-center shadow-md border border-structure"
+                type="submit" 
+                disabled={!content.trim() && !image}
+                className="bg-structure/10 text-ink font-mono text-[10px] font-bold uppercase tracking-widest px-6 py-2.5 rounded-xl hover:bg-structure/20 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               >
-                ✕
+                Post
               </button>
             </div>
-          )}
-          <div className="flex justify-between items-center">
-            <div className="flex gap-2">
-              <input 
-                type="file" 
-                accept="image/*" 
-                ref={fileInputRef}
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setImage(e.target.files[0]);
-                  }
-                }}
-                className="hidden" 
-              />
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()}
-                className="text-2xl opacity-50 hover:opacity-100 transition-opacity"
-              >
-                📸
-              </button>
-              <button type="button" className="text-2xl opacity-50 hover:opacity-100 transition-opacity">🏅</button>
-            </div>
-            <button type="submit" disabled={!content.trim() && !image} className="bg-verification text-white disabled:bg-structure disabled:text-data font-mono text-[10px] font-bold uppercase tracking-widest px-6 py-2 rounded-lg hover:bg-verification/90 transition-colors shadow-sm">
-              Post
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12">
@@ -407,6 +490,20 @@ export const FeedWidget = ({ authorId }: { authorId?: string | number }) => {
 export const FollowersWidget = () => {
   const [followers, setFollowers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  const handleMessage = async (userId: number) => {
+    try {
+      const res = await api.post('/messages/start-conversation/', { recipient_id: userId });
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.set('tab', 'Messages');
+      currentParams.set('conversation', res.data.id);
+      navigate(`?${currentParams.toString()}`);
+    } catch (err) {
+      console.error('Failed to start conversation:', err);
+      alert('Unable to start conversation. Make sure you are following each other.');
+    }
+  };
 
   const fetchFollowers = async () => {
     try {
@@ -466,6 +563,13 @@ export const FollowersWidget = () => {
                   Followed on {new Date(follow.created_at).toLocaleDateString()}
                 </p>
               </div>
+              <button
+                onClick={() => handleMessage(follower.id)}
+                className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-structure/10 text-ink hover:bg-structure/20 rounded-xl transition-colors active:scale-95 self-center"
+                title="Message"
+              >
+                💬
+              </button>
             </motion.div>
           );
         })}
