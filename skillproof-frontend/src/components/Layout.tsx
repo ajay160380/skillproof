@@ -2,6 +2,8 @@ import React from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Logo } from './Logo';
+import { BubbleMenu } from './BubbleMenu';
+import { AIAssistantWidget } from './AIAssistantWidget';
 
 export function Layout() {
   const { user, isAuthenticated, isLoading, logout } = useAuthStore();
@@ -14,63 +16,67 @@ export function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-vellum text-ink overflow-x-hidden">
-      {/* Structural Header */}
-      <header className="border border-structure/30 px-6 py-4 mx-4 mt-4 rounded-2xl flex items-center justify-between bg-white/70 backdrop-blur-2xl shadow-sm z-50 sticky top-4 transition-all duration-300">
-        <Link to={isAuthenticated ? (user?.role === 'recruiter' ? '/recruiter' : '/dashboard') : '/'} className="outline-none">
-          <Logo />
-        </Link>
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          {isLoading ? (
-            <div className="w-20 h-6 animate-pulse bg-structure/20 rounded" />
-          ) : isAuthenticated ? (
-            <>
-              <Link 
-                to={user?.role === 'recruiter' ? '/recruiter' : '/dashboard'} 
-                className="hover:text-verification transition-colors"
-              >
-                Dashboard
-              </Link>
-              {user?.role === 'candidate' && (
-                <Link 
-                  to="/jobs" 
-                  className="hover:text-verification transition-colors"
-                >
-                  Jobs
-                </Link>
-              )}
-              {user?.role === 'recruiter' && (
-                <Link 
-                  to="/jobs/my-listings" 
-                  className="hover:text-verification transition-colors"
-                >
-                  Job Listings
-                </Link>
-              )}
-              <button 
-                onClick={handleLogout}
-                className="font-mono text-xs uppercase tracking-widest text-data hover:text-ink transition-colors"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="hover:text-verification transition-colors">Log In</Link>
-              <Link 
-                to="/register" 
-                className="bg-verification text-white px-5 py-2 rounded-lg font-bold shadow-md hover:shadow-lg hover:scale-105 transition-all"
-              >
-                Get Verified
-              </Link>
-            </>
-          )}
-        </nav>
-      </header>
+      {/* Interactive Bubble Menu Header */}
+      <BubbleMenu 
+        className="mt-6 mx-6 top-6"
+        position="sticky"
+        menuBg="rgba(255, 255, 255, 0.5)"
+        logo={
+          <Link to={isAuthenticated ? (user?.role === 'recruiter' ? '/recruiter' : '/dashboard') : '/'} className="outline-none">
+            <Logo />
+          </Link>
+        }
+        items={
+          isLoading ? [] :
+          isAuthenticated ? [
+            {
+              label: 'Dashboard',
+              href: user?.role === 'recruiter' ? '/recruiter' : '/dashboard',
+              rotation: -5,
+              hoverStyles: { bgColor: '#10b981', textColor: '#ffffff' }
+            },
+            ...(user?.role === 'candidate' ? [{
+              label: 'Jobs',
+              href: '/jobs',
+              rotation: 5,
+              hoverStyles: { bgColor: '#3b82f6', textColor: '#ffffff' }
+            }] : []),
+            ...(user?.role === 'recruiter' ? [{
+              label: 'Job Listings',
+              href: '/jobs/my-listings',
+              rotation: 5,
+              hoverStyles: { bgColor: '#f59e0b', textColor: '#ffffff' }
+            }] : []),
+            {
+              label: 'Logout',
+              href: '#',
+              onClick: handleLogout,
+              rotation: -5,
+              hoverStyles: { bgColor: '#ef4444', textColor: '#ffffff' }
+            }
+          ] : [
+            {
+              label: 'Log In',
+              href: '/login',
+              rotation: -5,
+              hoverStyles: { bgColor: '#8b5cf6', textColor: '#ffffff' }
+            },
+            {
+              label: 'Get Verified',
+              href: '/register',
+              rotation: 5,
+              hoverStyles: { bgColor: '#10b981', textColor: '#ffffff' }
+            }
+          ]
+        }
+      />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col relative z-10 w-full overflow-hidden">
         <Outlet />
       </main>
+
+      {isAuthenticated && <AIAssistantWidget />}
 
       {/* Expanded Structural Footer — only on public pages */}
       {!isAuthenticated && !isLoading && (
