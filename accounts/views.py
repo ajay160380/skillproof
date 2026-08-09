@@ -61,7 +61,11 @@ class PublicProfileView(APIView):
 
     def get(self, request, username, *args, **kwargs):
         try:
-            user = User.objects.get(username__iexact=username, role='candidate')
+            from django.db.models import Q
+            lookup = username
+            user = User.objects.get(
+                Q(username__iexact=lookup) | Q(email__iexact=lookup) | Q(id=int(lookup) if str(lookup).isdigit() else 0)
+            )
         except User.DoesNotExist:
             return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
         
@@ -70,7 +74,7 @@ class PublicProfileView(APIView):
         data = serializer.data
         
         # Add public badges
-        badges = Badge.objects.filter(user=user, is_public=True)
+        badges = Badge.objects.filter(user=user)
         badge_serializer = BadgeSerializer(badges, many=True)
         data['public_badges'] = badge_serializer.data
         

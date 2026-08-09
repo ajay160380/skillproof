@@ -10,20 +10,30 @@ from accounts.serializers import UserSerializer
 
 User = get_user_model()
 
-class SearchCandidatesView(generics.ListAPIView):
+class SearchNetworkView(generics.ListAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         q = self.request.query_params.get('q', '')
+        role = self.request.query_params.get('role', '')
+        
+        queryset = User.objects.exclude(id=self.request.user.id)
+        
+        if role:
+            queryset = queryset.filter(role=role)
+            
         if q:
-            return User.objects.filter(
-                Q(full_name__icontains=q) | Q(username__icontains=q),
-                role='candidate'
-            ).exclude(id=self.request.user.id)[:20]
+            queryset = queryset.filter(
+                Q(full_name__icontains=q) | 
+                Q(username__icontains=q) | 
+                Q(company_name__icontains=q) | 
+                Q(headline__icontains=q)
+            )
+            return queryset.order_by('-created_at')[:30]
         else:
-            # Suggested candidates (e.g. recent candidates)
-            return User.objects.filter(role='candidate').exclude(id=self.request.user.id).order_by('-created_at')[:10]
+            # Default to returning the most recently joined users across network
+            return queryset.order_by('-created_at')[:20]
 
 class FollowUserView(views.APIView):
     permission_classes = [IsAuthenticated]
