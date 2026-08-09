@@ -3,12 +3,14 @@ import { api } from '../services/api';
 import { BadgeIcon, type BadgeLevel } from '../components/BadgeIcon';
 import { EmptyState } from '../components/EmptyState';
 import { Loader } from '../components/Loader';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatedCounter } from '../components/AnimatedCounter';
+import { ProfileView } from '../components/profile/ProfileView';
+import { MessagesView } from './MessagesView';
 import { ScoreRing } from '../components/ScoreRing';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { FeedWidget } from '../components/network/NetworkWidgets';
+import { NetworkDiscoveryWidget, FeedWidget } from '../components/network/NetworkWidgets';
 import { useAuthStore } from '../store/authStore';
 
 // Interfaces
@@ -49,7 +51,30 @@ export function RecruiterDashboard() {
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } }, exit: { opacity: 0, transition: { duration: 0.2 } } };
   const tabVariants = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } }, exit: { opacity: 0, y: -10, transition: { duration: 0.2 } } };
 
-  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'Dashboard';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    const currentParams = Object.fromEntries(searchParams.entries());
+    if (activeTab !== 'Dashboard') {
+      if (currentParams.tab !== activeTab) {
+        setSearchParams({ ...currentParams, tab: activeTab }, { replace: true });
+      }
+    } else {
+      if (currentParams.tab) {
+        const { tab, ...rest } = currentParams;
+        setSearchParams(rest, { replace: true });
+      }
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') || 'Dashboard';
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams, activeTab]);
   const [loading, setLoading] = useState(true);
   
   // Dashboard & Candidates State
@@ -177,7 +202,7 @@ export function RecruiterDashboard() {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'Find Candidates') {
+    if (activeTab === 'Explore Network') {
       fetchCandidates();
     } else if (activeTab === 'Dashboard') {
       fetchTalentMatches();
@@ -276,8 +301,7 @@ export function RecruiterDashboard() {
     {
       category: 'TALENT',
       items: [
-        { id: 'Find Candidates', icon: '🔍', label: 'Find Candidates' },
-        { id: 'Following', icon: '👥', label: 'Following' },
+        { id: 'Explore Network', icon: '🔍', label: 'Explore Network' },
         { id: 'Leaderboard', icon: '🏆', label: 'Leaderboard', isLink: true, url: '/leaderboard' },
       ]
     },
@@ -293,6 +317,8 @@ export function RecruiterDashboard() {
       category: 'NETWORK',
       items: [
         { id: 'Feed', icon: '📰', label: 'Feed' },
+        { id: 'Explore Network', icon: '🔍', label: 'Explore Network' },
+        { id: 'Messages', icon: '💬', label: 'Messages' },
       ]
     },
     {
@@ -316,56 +342,83 @@ export function RecruiterDashboard() {
   return (
     <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-transparent">
       {/* Sidebar */}
-      <div className="w-64 bg-white/80 backdrop-blur-xl border-r border-structure/20 flex flex-col h-full shrink-0">
-        <div className="p-6 pb-2">
-          <h3 className="font-serif text-lg font-bold text-ink">Recruiter Portal</h3>
+      <div className="w-72 bg-white/40 backdrop-blur-3xl border-r border-white/60 shadow-[4px_0_32px_-12px_rgba(0,0,0,0.06)] flex flex-col h-full shrink-0 relative z-10">
+        <div className="p-8 pb-6">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-gradient-to-tr from-ink to-ink/80 rounded-xl flex items-center justify-center shadow-lg shadow-ink/20 ring-1 ring-white/50">
+               <span className="font-serif font-bold text-white text-xl">S</span>
+             </div>
+             <h3 className="font-serif text-2xl font-bold text-ink tracking-tight">SkillProof</h3>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-8 scrollbar-hide">
           {sidebarItems.map(group => (
             <div key={group.category}>
-              <h4 className="font-mono text-[10px] text-data uppercase tracking-widest mb-2 px-2">{group.category}</h4>
+              <h4 className="font-mono text-[10px] text-data/70 font-bold uppercase tracking-[0.25em] mb-3 px-4">{group.category}</h4>
               <ul className="space-y-1">
-                {group.items.map(item => (
-                  <li key={item.id}>
-                    {item.isLink ? (
-                      <a
-                        href={item.url}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors text-ink/70 hover:bg-structure/10 hover:text-ink"
-                      >
-                        <span className="text-lg">{item.icon}</span>
-                        {item.label}
-                      </a>
-                    ) : (
-                      <button
-                        onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                          activeTab === item.id 
-                            ? 'bg-verification/10 text-verification shadow-sm' 
-                            : 'text-ink/70 hover:bg-structure/30 hover:text-ink'
-                        }`}
-                      >
-                        <span className="text-lg">{item.icon}</span>
-                        {item.label}
-                      </button>
-                    )}
-                  </li>
-                ))}
+                {group.items.map(item => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <li key={item.id} className="relative px-2">
+                      {item.isLink ? (
+                        <a
+                          href={item.url}
+                          className="w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 group relative text-ink/60 hover:bg-white/50 hover:text-ink hover:shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)]"
+                        >
+                          <span className="text-xl opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-transform duration-300">{item.icon}</span>
+                          <span className="tracking-wide">{item.label}</span>
+                        </a>
+                      ) : (
+                        <>
+                          {/* Active Indicator Glow */}
+                          {isActive && (
+                            <motion.div 
+                              layoutId="activeTabIndicatorRecruiter" 
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-ink rounded-r-full shadow-[0_0_12px_rgba(15,23,42,0.6)]" 
+                            />
+                          )}
+                          <button
+                            onClick={() => setActiveTab(item.id)}
+                            className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 group ${
+                              isActive
+                                ? 'bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] text-ink' 
+                                : 'text-ink/60 hover:bg-white/50 hover:text-ink hover:shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)]'
+                            }`}
+                          >
+                            <span className={`text-xl transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-sm' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
+                              {item.icon}
+                            </span>
+                            <span className={`tracking-wide ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
         </div>
         
         {/* User Profile Snippet */}
-        <div className="p-4 border-t border-structure/20 m-4 rounded-xl bg-structure/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-verification/20 flex items-center justify-center text-verification font-serif font-bold">
-              {user?.email?.charAt(0).toUpperCase() || 'R'}
+        <div className="p-4 mx-4 mb-6 rounded-2xl bg-white/70 border border-white/80 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.08)] backdrop-blur-md flex items-center justify-between group hover:bg-white hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] transition-all cursor-pointer relative overflow-hidden">
+          {/* Subtle hover gradient mask */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-verification to-emerald-400 p-0.5 shadow-sm">
+               <div className="w-full h-full bg-white rounded-full flex items-center justify-center text-verification font-serif font-bold text-lg">
+                 {user?.email?.charAt(0).toUpperCase() || 'R'}
+               </div>
             </div>
             <div>
-              <div className="text-xs font-bold text-ink truncate w-24">{user?.email ? user.email.split('@')[0] : 'Recruiter'}</div>
-              <div className="text-[9px] font-mono text-data uppercase">Recruiter</div>
+              <div className="text-sm font-bold text-ink truncate w-24 tracking-tight">{user?.email ? user.email.split('@')[0] : 'Recruiter'}</div>
+              <div className="text-[9.5px] font-mono font-bold text-data uppercase tracking-widest mt-0.5">Recruiter</div>
             </div>
           </div>
+          <button className="text-data opacity-0 group-hover:opacity-100 transition-all duration-300 hover:text-ink hover:bg-structure/10 p-1.5 rounded-lg relative z-10">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+          </button>
         </div>
       </div>
 
@@ -483,205 +536,18 @@ export function RecruiterDashboard() {
             </motion.div>
           )}
 
-          {/* Find Candidates Tab */}
-          {activeTab === 'Find Candidates' && (
-            <motion.div key="find-candidates" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-               <div className="flex justify-between items-center">
-                  <h2 className="font-serif text-2xl font-bold text-ink">Candidate Marketplace</h2>
-               </div>
-               
-               {/* Search & Filters */}
-               <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm">
-                 <div className="flex flex-col md:flex-row gap-4 mb-4">
-                  <div className="relative flex-1">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-data">🔍</span>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search candidates by email or name..."
-                      className="w-full pl-11 pr-4 py-4 bg-white/50 border border-structure rounded-xl font-mono text-sm text-ink focus:outline-none focus:border-verification transition-all"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className={`px-6 py-4 border rounded-xl font-mono text-sm uppercase tracking-widest transition-all ${showFilters ? 'bg-ink text-vellum border-ink' : 'bg-vellum text-ink border-structure hover:border-ink'}`}
-                  >
-                    Filters {(selectedSkills.length > 0 || selectedLevels.length > 0 || minScore > 0) && '•'}
-                  </button>
-                </div>
-                
-                <AnimatePresence>
-                  {showFilters && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                       <div className="mt-4 pt-4 border-t border-structure/20 grid grid-cols-1 md:grid-cols-3 gap-8">
-                         {/* Skills Filter */}
-                        <div>
-                          <h3 className="font-mono text-xs uppercase tracking-widest text-data mb-3">Skill Category</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {availableSkills.map(s => (
-                              <button
-                                key={s.value}
-                                onClick={() => setSelectedSkills(prev => prev.includes(s.value) ? prev.filter(x => x !== s.value) : [...prev, s.value])}
-                                className={`px-3 py-1.5 rounded-md text-xs font-mono border transition-all ${selectedSkills.includes(s.value) ? 'bg-verification text-white border-verification' : 'bg-white/50 text-ink border-structure hover:border-verification'}`}
-                              >
-                                {s.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Badge Level Filter */}
-                        <div>
-                          <h3 className="font-mono text-xs uppercase tracking-widest text-data mb-3">Badge Level</h3>
-                          <div className="flex flex-wrap gap-2">
-                            {badgeLevels.map(l => (
-                              <button
-                                key={l}
-                                onClick={() => setSelectedLevels(prev => prev.includes(l) ? prev.filter(x => x !== l) : [...prev, l])}
-                                className={`px-3 py-1.5 rounded-md text-xs font-mono uppercase border transition-all flex items-center gap-1 ${selectedLevels.includes(l) ? 'bg-ink text-vellum border-ink' : 'bg-white/50 text-ink border-structure hover:border-ink'}`}
-                              >
-                                <BadgeIcon level={l as BadgeLevel} size={14} />
-                                {l}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Score & Sort */}
-                        <div>
-                          <div className="mb-6">
-                            <div className="flex justify-between items-center mb-3">
-                              <h3 className="font-mono text-xs uppercase tracking-widest text-data">Min Score</h3>
-                              <span className="font-mono text-sm text-ink font-bold">{minScore}</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0" max="100" step="5"
-                              value={minScore}
-                              onChange={(e) => setMinScore(Number(e.target.value))}
-                              className="w-full accent-verification cursor-pointer"
-                            />
-                          </div>
-
-                          <div>
-                            <h3 className="font-mono text-xs uppercase tracking-widest text-data mb-3">Sort By</h3>
-                            <select 
-                              value={sortBy} 
-                              onChange={(e) => setSortBy(e.target.value)}
-                              className="w-full p-2.5 bg-white border border-structure rounded-md font-mono text-sm text-ink focus:outline-none focus:border-verification"
-                            >
-                              <option value="highest_score">Highest Score</option>
-                              <option value="recently_verified">Recently Verified</option>
-                              <option value="alphabetical">Alphabetical</option>
-                            </select>
-                          </div>
-                        </div>
-                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-               </div>
-
-               {/* Candidates List */}
-               <div className="space-y-4">
-                 {isSearching ? (
-                   <div className="py-20 flex justify-center"><Loader /></div>
-                 ) : candidates.length === 0 ? (
-                   <EmptyState title="No candidates found" description="Try adjusting your filters or search query." />
-                 ) : (
-                   candidates.map((candidate, i) => {
-                    const bestBadge = candidate.public_badges[0];
-                    const isFollowing = savedCandidates.some(s => s.candidate_detail.id === candidate.id);
-                    return (
-                      <div key={candidate.id} className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-6 items-start md:items-center">
-                        <div className="flex items-center gap-6 md:w-1/3">
-                          {bestBadge ? (
-                            <ScoreRing percentage={bestBadge.overall_score || 0} size={80} strokeWidth={4} />
-                          ) : (
-                            <div className="w-[80px] h-[80px] rounded-full bg-structure/20 flex items-center justify-center font-mono text-xs text-data">N/A</div>
-                          )}
-                          <div>
-                            <h3 className="font-serif text-xl font-bold text-ink mb-1">{candidate.full_name || candidate.email.split('@')[0]}</h3>
-                            <div className="font-mono text-[10px] text-data tracking-widest">{candidate.email}</div>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap gap-2">
-                            {candidate.public_badges.slice(0, 3).map(badge => (
-                               <div key={badge.id} className="flex items-center gap-1.5 border border-structure bg-white/60 px-2.5 py-1 rounded-md">
-                                 <BadgeIcon level={badge.badge_level.toLowerCase() as BadgeLevel} size={14} />
-                                 <span className="font-mono text-[10px] uppercase font-bold text-ink truncate max-w-[120px]">
-                                   {badge.skill_category.name}
-                                 </span>
-                               </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2 md:w-48 w-full">
-                          <Link to={`/profile/${candidate.id}`} className="w-full py-2.5 bg-ink text-vellum text-center rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-ink/90 transition-colors">
-                            View Dossier &rarr;
-                          </Link>
-                          <button 
-                            onClick={() => toggleFollow(candidate.id)}
-                            className={`w-full py-2.5 border rounded-lg font-mono text-xs uppercase tracking-widest transition-colors flex items-center justify-center gap-2 ${isFollowing ? 'bg-ink text-vellum border-ink' : 'bg-white/50 text-ink border-structure hover:border-ink'}`}
-                          >
-                            {isFollowing ? 'Following' : 'Follow'}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                   })
-                 )}
-               </div>
+          {/* Explore Network Tab */}
+          {activeTab === 'Explore Network' && (
+            <motion.div key="explore-network" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
+              <h2 className="font-serif text-2xl font-bold text-ink">Explore Network</h2>
+              <NetworkDiscoveryWidget />
             </motion.div>
           )}
 
-          {/* Following Tab */}
-          {activeTab === 'Following' && (
-            <motion.div key="following" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-              <h2 className="font-serif text-2xl font-bold text-ink">Following</h2>
-              {savedCandidates.length === 0 ? (
-                <EmptyState title="Not following anyone" description="Browse the marketplace and follow candidates to track them." />
-              ) : (
-                <div className="grid grid-cols-1 gap-6">
-                  {savedCandidates.map((saved, i) => (
-                    <div key={saved.id} className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6 items-center">
-                       <div className="flex items-center gap-6 md:w-1/3">
-                          {saved.candidate_detail.public_badges[0] ? (
-                            <ScoreRing percentage={saved.candidate_detail.public_badges[0].overall_score || 0} size={60} strokeWidth={3} />
-                          ) : (
-                            <div className="w-[60px] h-[60px] rounded-full bg-structure/20 flex items-center justify-center font-mono text-xs text-data">N/A</div>
-                          )}
-                          <div>
-                            <h3 className="font-serif text-xl font-bold text-ink mb-1">{saved.candidate_detail.full_name || saved.candidate_detail.email.split('@')[0]}</h3>
-                            <div className="font-mono text-[10px] uppercase text-data tracking-widest">
-                              Following since {new Date(saved.saved_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex-1 flex gap-2">
-                           {saved.candidate_detail.public_badges.slice(0, 3).map(badge => (
-                             <div key={badge.id} className="flex items-center gap-1.5 border border-structure bg-white/60 px-2 py-0.5 rounded text-[10px] uppercase font-bold text-ink">
-                               <BadgeIcon level={badge.badge_level.toLowerCase() as BadgeLevel} size={12} />
-                               {badge.skill_category.name}
-                             </div>
-                           ))}
-                        </div>
-                        <div className="flex flex-col gap-2 md:w-48 w-full">
-                           <Link to={`/profile/${saved.candidate_detail.id}`} className="w-full py-2 bg-ink text-vellum text-center rounded-lg font-mono text-[10px] uppercase tracking-widest hover:bg-ink/90 transition-colors">
-                            View Dossier
-                          </Link>
-                           <button onClick={() => toggleFollow(saved.candidate_detail.id)} className="w-full py-2 border border-structure bg-white/50 text-ink text-center rounded-lg font-mono text-[10px] uppercase tracking-widest hover:border-ink transition-colors">
-                            Unfollow
-                          </button>
-                        </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+          {/* Messages Tab */}
+          {activeTab === 'Messages' && (
+            <motion.div key="messages" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-6xl mx-auto px-4 sm:px-8 py-6 h-full">
+              <MessagesView />
             </motion.div>
           )}
 

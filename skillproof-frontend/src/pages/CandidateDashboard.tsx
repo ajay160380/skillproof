@@ -14,9 +14,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import toast from 'react-hot-toast';
 
 import { ActivityStreakWidget, RecentJobMatchesWidget, UpcomingInterviewsWidget, PortfolioWidget } from '../components/dashboard/DashboardWidgets';
-import { FindCandidatesWidget, FeedWidget, FollowersWidget } from '../components/network/NetworkWidgets';
+import { FeedWidget, NetworkDiscoveryWidget, FollowersWidget } from '../components/network/NetworkWidgets';
 import { ProfileView } from '../components/profile/ProfileView';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { PremiumToggle } from '../components/PremiumToggle';
+import { MessagesView } from './MessagesView';
 
 interface SkillTest {
   id: number;
@@ -87,12 +89,25 @@ const tabVariants = {
   const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
+    const currentParams = Object.fromEntries(searchParams.entries());
     if (activeTab !== 'Dashboard') {
-      setSearchParams({ tab: activeTab }, { replace: true });
+      if (currentParams.tab !== activeTab) {
+        setSearchParams({ ...currentParams, tab: activeTab }, { replace: true });
+      }
     } else {
-      setSearchParams({}, { replace: true });
+      if (currentParams.tab) {
+        const { tab, ...rest } = currentParams;
+        setSearchParams(rest, { replace: true });
+      }
     }
-  }, [activeTab, setSearchParams]);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') || 'Dashboard';
+    if (urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams, activeTab]);
   const [categories, setCategories] = useState<SkillCategory[]>([]);
   const [testsByCategory, setTestsByCategory] = useState<Record<number, SkillTest[]>>({});
   const [badges, setBadges] = useState<Record<number, Badge>>({});
@@ -113,6 +128,7 @@ const tabVariants = {
   const [profile, setProfile] = useState<any>(null);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalUnreadMessages, setTotalUnreadMessages] = useState(0);
   
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -207,6 +223,27 @@ const tabVariants = {
     }
     fetchData();
   }, []);
+
+  // Poll for unread messages
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await api.get('/messages/conversations/');
+        const conversations = res.data || [];
+        const unread = conversations.reduce((sum: number, conv: any) => sum + (conv.unread_count || 0), 0);
+        setTotalUnreadMessages(unread);
+      } catch (err) {
+        console.error('Failed to fetch unread messages:', err);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 15000); // Check every 15 seconds
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Polling for processing resume
   useEffect(() => {
@@ -321,8 +358,8 @@ const tabVariants = {
       category: 'NETWORK',
       items: [
         { id: 'Feed', icon: '📰', label: 'Feed' },
-        { id: 'Find Candidates', icon: '🔍', label: 'Find Candidates' },
-        { id: 'Followers', icon: '👥', label: 'Followers' },
+        { id: 'Explore Network', icon: '🔍', label: 'Explore Network' },
+        { id: 'Messages', icon: '💬', label: 'Messages' },
       ]
     },
     {
@@ -337,7 +374,6 @@ const tabVariants = {
       items: [
         { id: 'Certificates', icon: '🏅', label: 'Certificates' },
         { id: 'Resume', icon: '📄', label: 'Resume' },
-        { id: 'Portfolio', icon: '🌐', label: 'Portfolio' },
       ]
     },
     {
@@ -357,48 +393,70 @@ const tabVariants = {
   return (
     <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-transparent">
       {/* Sidebar */}
-      <div className="w-64 bg-white/80 backdrop-blur-xl border-r border-structure/20 flex flex-col h-full shrink-0">
-        <div className="p-6 pb-2">
-          <h3 className="font-serif text-lg font-bold text-ink">Candidate Portal</h3>
+      <div className="w-72 bg-white/40 backdrop-blur-3xl border-r border-white/60 shadow-[4px_0_32px_-12px_rgba(0,0,0,0.06)] flex flex-col h-full shrink-0 relative z-10">
+        <div className="p-8 pb-6">
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 bg-gradient-to-tr from-ink to-ink/80 rounded-xl flex items-center justify-center shadow-lg shadow-ink/20 ring-1 ring-white/50">
+               <span className="font-serif font-bold text-white text-xl">S</span>
+             </div>
+             <h3 className="font-serif text-2xl font-bold text-ink tracking-tight">SkillProof</h3>
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-8 scrollbar-hide">
           {sidebarItems.map(group => (
             <div key={group.category}>
-              <h4 className="font-mono text-[10px] text-data uppercase tracking-widest mb-2 px-2">{group.category}</h4>
+              <h4 className="font-mono text-[10px] text-data/70 font-bold uppercase tracking-[0.25em] mb-3 px-4">{group.category}</h4>
               <ul className="space-y-1">
-                {group.items.map(item => (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                        activeTab === item.id 
-                          ? 'bg-verification/10 text-verification shadow-sm' 
-                          : 'text-ink/70 hover:bg-structure/30 hover:text-ink'
-                      }`}
-                    >
-                      <span className="text-lg">{item.icon}</span>
-                      {item.label}
-                    </button>
-                  </li>
-                ))}
+                {group.items.map(item => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <li key={item.id} className="relative px-2">
+                      {/* Active Indicator Glow */}
+                      {isActive && (
+                        <motion.div 
+                          layoutId="activeTabIndicatorCandidate" 
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-ink rounded-r-full shadow-[0_0_12px_rgba(15,23,42,0.6)]" 
+                        />
+                      )}
+                      <button
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 group ${
+                          isActive
+                            ? 'bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.08)] text-ink' 
+                            : 'text-ink/60 hover:bg-white/50 hover:text-ink hover:shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)]'
+                        }`}
+                      >
+                        <span className={`text-xl transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-sm' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
+                          {item.icon}
+                        </span>
+                        <span className={`tracking-wide ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
         </div>
         
         {/* User Profile Snippet */}
-        <div className="p-4 border-t border-structure/20 m-4 rounded-xl bg-structure/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-verification/20 flex items-center justify-center text-verification font-serif font-bold">
-              {user?.email?.charAt(0).toUpperCase() || 'U'}
+        <div className="p-4 mx-4 mb-6 rounded-2xl bg-white/70 border border-white/80 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.08)] backdrop-blur-md flex items-center justify-between group hover:bg-white hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] transition-all cursor-pointer relative overflow-hidden">
+          {/* Subtle hover gradient mask */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          
+          <div className="flex items-center gap-3 relative z-10">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-verification to-emerald-400 p-0.5 shadow-sm">
+               <div className="w-full h-full bg-white rounded-full flex items-center justify-center text-verification font-serif font-bold text-lg">
+                 {user?.email?.charAt(0).toUpperCase() || 'U'}
+               </div>
             </div>
             <div>
-              <div className="text-xs font-bold text-ink truncate w-24">{user?.email ? user.email.split('@')[0] : 'User'}</div>
-              <div className="text-[9px] font-mono text-data uppercase">Candidate</div>
+              <div className="text-sm font-bold text-ink truncate w-24 tracking-tight">{user?.email ? user.email.split('@')[0] : 'User'}</div>
+              <div className="text-[9.5px] font-mono font-bold text-data uppercase tracking-widest mt-0.5">Candidate</div>
             </div>
           </div>
-          <button onClick={() => {}} className="text-data hover:text-seal transition-colors">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+          <button className="text-data opacity-0 group-hover:opacity-100 transition-all duration-300 hover:text-ink hover:bg-structure/10 p-1.5 rounded-lg relative z-10">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
           </button>
         </div>
       </div>
@@ -406,60 +464,19 @@ const tabVariants = {
       {/* Main Content Area */}
       <div className="flex-1 h-full overflow-y-auto relative bg-transparent">
         
-        {/* Invites Icon Toggle (Fixed Floating Action Button) */}
-        <div className="fixed bottom-8 right-8 z-[100]">
+        {/* Messages Toggle (Fixed Floating Action Button) */}
+        <div className="fixed top-6 right-32 z-[100]">
           <button 
-            onClick={() => setShowInvites(!showInvites)}
-            className="relative p-4 bg-ink text-white hover:bg-ink/90 rounded-full transition-transform hover:scale-105 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.3)] border border-white/10 flex items-center justify-center"
+            onClick={() => setActiveTab('Messages')}
+            className="relative w-12 h-12 md:w-14 md:h-14 bg-ink text-white hover:bg-ink/90 rounded-full transition-transform hover:scale-105 shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-white/10 flex items-center justify-center"
           >
-            <span className="text-2xl">✉️</span>
-            {invites.length > 0 && (
-              <span className="absolute top-0 right-0 w-4 h-4 bg-verification rounded-full border-2 border-ink shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse" />
+            <span className="text-xl">✉️</span>
+            {totalUnreadMessages > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#EF4444] text-white text-[11px] font-bold rounded-full border-2 border-ink flex items-center justify-center shadow-sm">
+                {totalUnreadMessages}
+              </span>
             )}
           </button>
-
-          {/* Invites Dropdown */}
-          {showInvites && (
-            <div className="absolute bottom-20 right-0 w-96 bg-white rounded-2xl shadow-2xl border border-structure/20 overflow-hidden">
-              <div className="p-4 bg-ink text-white flex justify-between items-center">
-                <h3 className="font-serif font-bold text-sm">Direct Interview Invites</h3>
-                <span className="bg-verification text-ink text-[10px] font-bold px-2 py-0.5 rounded-full">{invites.length} NEW</span>
-              </div>
-              <div className="max-h-96 overflow-y-auto p-4 space-y-4">
-                {invites.length > 0 ? (
-                  invites.map((invite) => (
-                    <div key={invite.id} className="p-4 rounded-xl border border-structure/30 hover:border-verification transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-serif font-bold text-ink">{invite.company_name}</h4>
-                          <p className="font-mono text-[9px] text-verification uppercase tracking-widest">{invite.job_title}</p>
-                        </div>
-                        <div className="font-mono text-[9px] text-data uppercase tracking-widest">
-                          {new Date(invite.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <p className="text-xs font-serif italic text-ink/70 mb-3 bg-structure/5 p-2 rounded">
-                        "{invite.message}"
-                      </p>
-                      <div className="flex gap-2">
-                        <button className="flex-1 py-1.5 bg-ink text-vellum rounded font-mono text-[9px] uppercase tracking-widest hover:bg-ink/90 transition-colors">
-                          Accept
-                        </button>
-                        <button className="flex-1 py-1.5 bg-white border border-structure text-ink rounded font-mono text-[9px] uppercase tracking-widest hover:border-ink transition-colors">
-                          Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-data">
-                    <span className="text-3xl block mb-2 opacity-50">📭</span>
-                    <p className="font-mono text-[10px] uppercase tracking-widest">No invites yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -467,18 +484,40 @@ const tabVariants = {
         {activeTab === 'Dashboard' && (
           <motion.div key="dashboard" variants={tabVariants} initial="hidden" animate="show" exit="exit">
             {!resume ? (
-              <div className="flex-1 flex flex-col items-center justify-center min-h-[500px] text-center px-8">
-                <span className="text-6xl block mb-6 animate-bounce">📄</span>
-                <h1 className="font-serif text-4xl font-bold text-ink mb-4">Welcome to Your Portal</h1>
-                <p className="font-mono text-xs uppercase tracking-widest text-data mb-8 max-w-md mx-auto leading-relaxed">
-                  Step 1: To get started, you need to upload your resume. Our AI will analyze your experience and suggest the best skill assessments for you.
-                </p>
-                <button 
-                  onClick={() => setActiveTab('Resume')}
-                  className="bg-verification text-white font-mono text-sm font-bold uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-verification/90 transition-transform hover:scale-105 shadow-md hover:shadow-lg"
-                >
-                  Upload Your Resume
-                </button>
+              <div className="flex-1 flex flex-col items-center justify-center min-h-[600px] px-8 relative">
+                {/* Background Blobs for depth */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-verification/10 to-emerald-400/10 blur-[100px] rounded-full pointer-events-none" />
+                
+                <div className="bg-white/70 backdrop-blur-3xl border border-white/60 shadow-[0_8px_32px_-12px_rgba(0,0,0,0.1)] rounded-3xl p-12 max-w-xl w-full text-center relative overflow-hidden z-10 group transition-all duration-500 hover:shadow-[0_16px_48px_-12px_rgba(0,0,0,0.15)] hover:border-white/80">
+                   {/* Shimmer effect */}
+                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+                   
+                   <div className="relative w-28 h-28 mx-auto mb-8">
+                     <div className="absolute inset-0 bg-gradient-to-br from-verification/20 to-verification/5 rounded-[2rem] rotate-3 group-hover:rotate-6 transition-transform duration-500" />
+                     <div className="absolute inset-0 bg-white shadow-lg rounded-[2rem] -rotate-3 group-hover:rotate-0 transition-transform duration-500 flex items-center justify-center">
+                       <svg className="w-12 h-12 text-verification" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                       </svg>
+                     </div>
+                     {/* Floating particle */}
+                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.5)] animate-pulse" />
+                   </div>
+                   
+                   <h1 className="font-serif text-3xl font-bold text-ink mb-4 tracking-tight">Welcome to Your Portal</h1>
+                   
+                   <p className="font-serif text-base text-ink/70 mb-10 max-w-sm mx-auto leading-relaxed">
+                     <span className="font-mono text-[10px] text-verification font-bold uppercase tracking-widest block mb-2">Step 1</span>
+                     To get started, upload your resume. Our AI will analyze your experience and map out your perfect verification path.
+                   </p>
+                   
+                   <button 
+                     onClick={() => setActiveTab('Resume')}
+                     className="bg-ink text-white font-mono text-xs font-bold uppercase tracking-[0.15em] px-10 py-4 rounded-xl shadow-[0_4px_14px_0_rgb(0,0,0,0.39)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.23)] hover:-translate-y-[1px] transition-all duration-200 flex items-center justify-center gap-3 mx-auto w-full max-w-[280px]"
+                   >
+                     <span>Upload Resume</span>
+                     <span className="text-lg leading-none mt-[-2px]">→</span>
+                   </button>
+                </div>
               </div>
             ) : (
               <>
@@ -659,19 +698,18 @@ const tabVariants = {
           </motion.div>
         )}
 
-        {/* Find Candidates Tab */}
-        {activeTab === 'Find Candidates' && (
-          <motion.div key="find-candidates" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-            <h2 className="font-serif text-2xl font-bold text-ink">Find Candidates</h2>
-            <FindCandidatesWidget />
+        {/* Explore Network Tab */}
+        {activeTab === 'Explore Network' && (
+          <motion.div key="explore" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10">
+            <h2 className="font-serif text-2xl font-bold text-ink">Explore Network</h2>
+            <NetworkDiscoveryWidget />
           </motion.div>
         )}
 
-        {/* Followers Tab */}
-        {activeTab === 'Followers' && (
-          <motion.div key="followers" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-            <h2 className="font-serif text-2xl font-bold text-ink">Followers</h2>
-            <FollowersWidget />
+        {/* Messages Tab */}
+        {activeTab === 'Messages' && (
+          <motion.div key="messages" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-6xl mx-auto px-4 sm:px-8 py-6 h-full">
+            <MessagesView />
           </motion.div>
         )}
 
@@ -986,13 +1024,7 @@ const tabVariants = {
           </motion.div>
         )}
 
-        {/* Portfolio Tab */}
-        {activeTab === 'Portfolio' && (
-          <motion.div key="portfolio" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-            <h2 className="font-serif text-2xl font-bold text-ink">Portfolio</h2>
-            <PortfolioWidget />
-          </motion.div>
-        )}
+
         
                 {/* Profile Tab */}
         {activeTab === 'Profile' && (profile || user) && (
@@ -1014,29 +1046,31 @@ const tabVariants = {
         {/* Settings Tab */}
         {activeTab === 'Settings' && (
           <motion.div key="settings" variants={tabVariants} initial="hidden" animate="show" exit="exit" className="max-w-5xl mx-auto px-8 py-10 space-y-8">
-            <h2 className="font-serif text-2xl font-bold text-ink">Settings</h2>
-            <div className="p-8 bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl shadow-sm">
-              <h3 className="font-serif text-lg font-bold text-ink mb-4">Account Preferences</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-structure/20 rounded-xl">
+            <h2 className="font-serif text-3xl font-bold text-ink tracking-tight mb-2">Settings</h2>
+            
+            <div className="p-8 bg-white/70 backdrop-blur-3xl border border-white/60 rounded-3xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.1)] relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-white/20 pointer-events-none" />
+              
+              <h3 className="font-serif text-xl font-bold text-ink mb-6 relative z-10 flex items-center gap-3">
+                <span className="p-2 bg-ink text-white rounded-xl shadow-md">⚙️</span>
+                Account Preferences
+              </h3>
+              
+              <div className="space-y-3 relative z-10">
+                <div className="flex items-center justify-between p-5 border border-white/50 bg-white/50 hover:bg-white/80 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group/row">
                   <div>
-                    <h4 className="font-bold text-ink text-sm">Email Notifications</h4>
-                    <p className="font-mono text-[10px] text-data">Receive updates about jobs and connections.</p>
+                    <h4 className="font-bold text-ink text-sm group-hover/row:text-verification transition-colors">Email Notifications</h4>
+                    <p className="font-mono text-[10px] text-data/80 uppercase tracking-widest mt-1">Receive updates about jobs and connections.</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-structure/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-verification"></div>
-                  </label>
+                  <PremiumToggle checked={true} onChange={() => {}} />
                 </div>
-                <div className="flex items-center justify-between p-4 border border-structure/20 rounded-xl">
+                
+                <div className="flex items-center justify-between p-5 border border-white/50 bg-white/50 hover:bg-white/80 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group/row">
                   <div>
-                    <h4 className="font-bold text-ink text-sm">Profile Visibility</h4>
-                    <p className="font-mono text-[10px] text-data">Make your profile discoverable by recruiters.</p>
+                    <h4 className="font-bold text-ink text-sm group-hover/row:text-verification transition-colors">Profile Visibility</h4>
+                    <p className="font-mono text-[10px] text-data/80 uppercase tracking-widest mt-1">Make your profile discoverable by recruiters.</p>
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-structure/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-verification"></div>
-                  </label>
+                  <PremiumToggle checked={true} onChange={() => {}} />
                 </div>
               </div>
             </div>
