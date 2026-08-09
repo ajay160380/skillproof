@@ -37,11 +37,13 @@ INSTALLED_APPS = [
     'network',
     'skills',
     'assessments',
+    'assistant',
     'badges',
     'marketplace',
     'resumes',
     'jobs',
     'portfolio',
+    'messaging',
 ]
 
 MIDDLEWARE = [

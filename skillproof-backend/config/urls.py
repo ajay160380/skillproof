@@ -38,8 +38,10 @@ urlpatterns = [
     path('api/marketplace/', include('marketplace.urls')),
     path('api/network/', include('network.urls')),
     path('api/resumes/', include('resumes.urls')),
+    path('api/assistant/', include('assistant.urls')),
     path('api/jobs/', include('jobs.urls')),
     path('api/portfolio/', include('portfolio.urls')),
+    path('api/messages/', include('messaging.urls')),
 ]
 
 from django.conf import settings
