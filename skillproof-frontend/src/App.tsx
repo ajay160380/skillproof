@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { AnimatePresence } from 'framer-motion';
 import { Layout } from './components/Layout';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
@@ -44,6 +45,7 @@ function ScrollToHash() {
 
 function App() {
   const { setUser, setLoading, logout } = useAuthStore();
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -84,29 +86,31 @@ function App() {
           },
         }} 
       />
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<LandingPage />} />
-          <Route path="login" element={<LoginPage />} />
-          <Route path="register" element={<RegisterPage />} />
-          <Route path="verify/:id?" element={<VerifyCertificate />} />
-          
-          <Route element={<ProtectedRoute />}>
-            <Route path="dashboard" element={<CandidateDashboard />} />
-            <Route path="recruiter" element={<RecruiterDashboard />} />
-            <Route path="test/:id" element={<TestScreen />} />
-            <Route path="jobs/post" element={<PostJob />} />
-            <Route path="jobs/my-listings" element={<RecruiterJobs />} />
-            <Route path="followers" element={<FollowersList />} />
-          </Route>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<LandingPage />} />
+            <Route path="login" element={<LoginPage />} />
+            <Route path="register" element={<RegisterPage />} />
+            <Route path="verify/:id?" element={<VerifyCertificate />} />
+            
+            <Route element={<ProtectedRoute />}>
+              <Route path="dashboard" element={<CandidateDashboard />} />
+              <Route path="recruiter" element={<RecruiterDashboard />} />
+              <Route path="test/:id" element={<TestScreen />} />
+              <Route path="jobs/post" element={<PostJob />} />
+              <Route path="jobs/my-listings" element={<RecruiterJobs />} />
+              <Route path="followers" element={<FollowersList />} />
+            </Route>
 
-          <Route path="profile/:id" element={<PublicProfile />} />
-          <Route path="score/:id" element={<ScoreReveal />} />
-          <Route path="jobs" element={<JobsBrowser />} />
-          <Route path="jobs/:id" element={<JobDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Route>
-      </Routes>
+            <Route path="profile/:id" element={<PublicProfile />} />
+            <Route path="score/:id" element={<ScoreReveal />} />
+            <Route path="jobs" element={<JobsBrowser />} />
+            <Route path="jobs/:id" element={<JobDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+      </AnimatePresence>
     </>
   );
 }
