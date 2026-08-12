@@ -340,9 +340,9 @@ export function RecruiterDashboard() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-transparent">
+    <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-mesh">
       {/* Sidebar */}
-      <div className="w-72 bg-white/40 backdrop-blur-3xl border-r border-white/60 shadow-[4px_0_32px_-12px_rgba(0,0,0,0.06)] flex flex-col h-full shrink-0 relative z-10">
+      <div className="w-72 glass-panel border-r border-structure/30 flex flex-col h-full shrink-0 relative z-10">
         <div className="p-8 pb-6">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 bg-gradient-to-tr from-ink to-ink/80 rounded-xl flex items-center justify-center shadow-lg shadow-ink/20 ring-1 ring-white/50">
@@ -429,7 +429,11 @@ export function RecruiterDashboard() {
           {/* Dashboard Tab */}
           {activeTab === 'Dashboard' && (
             <motion.div key="dashboard" variants={tabVariants} initial="hidden" animate="show" exit="exit">
-              <div className="relative overflow-hidden bg-ink text-white mb-8 border-b-4 border-verification">
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative overflow-hidden bg-ink text-white mb-8 rounded-b-3xl shadow-2xl mx-4 mt-0"
+              >
                 <div className="absolute inset-0 opacity-10" style={{
                   backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, #ffffff 40px, #ffffff 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, #ffffff 40px, #ffffff 41px)`,
                 }} />
@@ -457,21 +461,21 @@ export function RecruiterDashboard() {
                 {/* Stats Grid */}
                 {stats && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all">
+                    <motion.div whileHover={{ y: -5 }} className="glass-panel rounded-3xl p-6 shadow-sm transition-all duration-300">
                       <div className="font-mono text-[10px] uppercase tracking-widest text-data mb-2">Total Verified</div>
                       <div className="text-4xl text-ink font-serif font-bold"><AnimatedCounter target={stats.total_verified_candidates} /></div>
-                    </div>
-                    <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all">
+                    </motion.div>
+                    <motion.div whileHover={{ y: -5 }} className="glass-panel rounded-3xl p-6 shadow-sm transition-all duration-300">
                       <div className="font-mono text-[10px] uppercase tracking-widest text-data mb-2">Following</div>
                       <div className="text-4xl text-ink font-serif font-bold"><AnimatedCounter target={stats.candidates_saved} /></div>
-                    </div>
-                    <div className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all">
+                    </motion.div>
+                    <motion.div whileHover={{ y: -5 }} className="glass-panel rounded-3xl p-6 shadow-sm transition-all duration-300">
                       <div className="font-mono text-[10px] uppercase tracking-widest text-data mb-2">Platform Avg Score</div>
                       <div className="text-4xl text-ink font-serif font-bold flex items-baseline gap-1">
                         <AnimatedCounter target={stats.average_verified_score} />
                         <span className="text-lg text-data font-mono">/100</span>
                       </div>
-                    </div>
+                    </motion.div>
                   </div>
                 )}
 
@@ -488,7 +492,7 @@ export function RecruiterDashboard() {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {talentMatches.slice(0, 4).map((match, i) => (
-                        <div key={match.user_id} className="bg-white/60 backdrop-blur-xl border border-structure/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <motion.div whileHover={{ y: -5 }} key={match.user_id} className="glass-panel rounded-3xl p-6 hover:shadow-lg transition-all duration-300">
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h3 className="font-serif text-xl text-ink font-bold">{match.name || match.email.split('@')[0]}</h3>
@@ -515,19 +519,19 @@ export function RecruiterDashboard() {
                           <div className="flex gap-3">
                             <Link 
                               to={`/profile/${match.user_id}`} 
-                              className="flex-1 py-2 border border-structure bg-white/50 text-ink text-center rounded-lg font-mono text-xs uppercase tracking-widest hover:border-ink transition-colors"
+                              className="flex-1 py-2 glass-button text-ink text-center rounded-xl font-mono text-xs uppercase tracking-widest hover:border-ink transition-colors"
                             >
                               Dossier
                             </Link>
                             <button
                               onClick={() => handleProposeInterview(match.user_id.toString())}
                               disabled={sendingInvite === match.user_id}
-                              className="flex-1 py-2 bg-ink text-vellum text-center rounded-lg font-mono text-xs uppercase tracking-widest hover:bg-ink/90 transition-colors disabled:opacity-50"
+                              className="flex-1 py-2 bg-ink text-vellum text-center rounded-xl font-mono text-xs uppercase tracking-widest hover:bg-gray-800 transition-colors shadow-lg disabled:opacity-50"
                             >
                               {sendingInvite === match.user_id ? 'Proposing...' : 'Propose Interview'}
                             </button>
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   )}

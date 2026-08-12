@@ -391,9 +391,9 @@ const tabVariants = {
   ];
 
   return (
-    <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-transparent">
+    <div className="flex h-[calc(100vh-73px)] overflow-hidden bg-mesh">
       {/* Sidebar */}
-      <div className="w-72 bg-white/40 backdrop-blur-3xl border-r border-white/60 shadow-[4px_0_32px_-12px_rgba(0,0,0,0.06)] flex flex-col h-full shrink-0 relative z-10">
+      <div className="w-72 glass-panel border-r border-structure/30 flex flex-col h-full shrink-0 relative z-10">
         <div className="p-8 pb-6">
           <div className="flex items-center gap-3">
              <div className="w-10 h-10 bg-gradient-to-tr from-ink to-ink/80 rounded-xl flex items-center justify-center shadow-lg shadow-ink/20 ring-1 ring-white/50">
@@ -440,7 +440,7 @@ const tabVariants = {
         </div>
         
         {/* User Profile Snippet */}
-        <div className="p-4 mx-4 mb-6 rounded-2xl bg-white/70 border border-white/80 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.08)] backdrop-blur-md flex items-center justify-between group hover:bg-white hover:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] transition-all cursor-pointer relative overflow-hidden">
+        <div className="p-4 mx-4 mb-6 rounded-2xl glass-panel flex items-center justify-between group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer relative overflow-hidden">
           {/* Subtle hover gradient mask */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
           
@@ -521,7 +521,11 @@ const tabVariants = {
               </div>
             ) : (
               <>
-                <div className="relative overflow-hidden bg-ink text-white mb-8 border-b-4 border-verification">
+                <motion.div 
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="relative overflow-hidden bg-ink text-white mb-8 rounded-b-3xl shadow-2xl mx-4 mt-0"
+                >
                   {/* Abstract Background pattern */}
                   <div className="absolute inset-0 opacity-10" style={{
                     backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, #ffffff 40px, #ffffff 41px), repeating-linear-gradient(90deg, transparent, transparent 40px, #ffffff 40px, #ffffff 41px)`,
@@ -593,7 +597,10 @@ const tabVariants = {
                   
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
                     {/* Radar Chart Component */}
-                    <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-structure/30 shadow-sm hover:shadow-lg transition-all">
+                    <motion.div 
+                      whileHover={{ y: -5 }}
+                      className="glass-panel rounded-3xl p-8 transition-all"
+                    >
                       <h3 className="font-serif font-bold text-ink mb-1">Core Competencies</h3>
                       <p className="font-mono text-[9px] uppercase tracking-widest text-data mb-6">Radar Analysis</p>
                       <div className="h-[300px]">
@@ -617,7 +624,10 @@ const tabVariants = {
                       </div>
                     </div>
 
-                    <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-6 border border-structure/30 shadow-sm hover:shadow-lg transition-all flex flex-col">
+                    <motion.div 
+                      whileHover={{ y: -5 }}
+                      className="glass-panel rounded-3xl p-8 transition-all flex flex-col"
+                    >
                       <h3 className="font-serif font-bold text-ink mb-1">Performance Trend</h3>
                       <p className="font-mono text-[9px] uppercase tracking-widest text-data mb-6">Last 5 Assessments</p>
                       <div className="flex-1 min-h-[300px]">
