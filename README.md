@@ -1,6 +1,5 @@
 <div align="center">
 
-
 # ⚙️ SkillProof Backend API
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
