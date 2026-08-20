@@ -151,7 +151,7 @@ class TalentMatchView(APIView):
             badges_data = [{
                 'skill_name': b.skill_category.name,
                 'badge_level': b.badge_level,
-                'score': b.score.overall_score
+                'score': b.score.overall_score if hasattr(b, 'score') and b.score else 0
             } for b in badges]
             
             results.append({

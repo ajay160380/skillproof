@@ -54,19 +54,12 @@ class SubmitAttemptView(APIView):
         # Handle audio file upload for communication tests
         audio_file = request.FILES.get('audio_file')
         if audio_file:
-            import os
-            from django.conf import settings as django_settings
-            recordings_dir = os.path.join(django_settings.MEDIA_ROOT, 'recordings')
-            os.makedirs(recordings_dir, exist_ok=True)
+            from django.core.files.storage import default_storage
             
-            file_name = f'attempt_{attempt.id}_{audio_file.name}'
-            file_path = os.path.join(recordings_dir, file_name)
+            file_name = f'recordings/attempt_{attempt.id}_{audio_file.name}'
+            saved_path = default_storage.save(file_name, audio_file)
             
-            with open(file_path, 'wb+') as destination:
-                for chunk in audio_file.chunks():
-                    destination.write(chunk)
-            
-            attempt.recording_url = file_path
+            attempt.recording_url = default_storage.url(saved_path)
         
         # Handle other fields from JSON payload
         serializer = SubmitAttemptSerializer(data=request.data)
@@ -83,7 +76,7 @@ class SubmitAttemptView(APIView):
                     import json
                     try:
                         cheating_flags = json.loads(request.data['cheating_flags'])
-                    except:
+                    except (ValueError, json.JSONDecodeError):
                         pass
                 if cheating_flags:
                     keystrokes['frontend_cheating_flags'] = cheating_flags

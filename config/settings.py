@@ -125,9 +125,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Cloudinary Storage (for persistent file uploads on Render)
 CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default='qf6wbumi'),
-    'API_KEY': env('CLOUDINARY_API_KEY', default='274489168274869'),
-    'API_SECRET': env('CLOUDINARY_API_SECRET', default='sCPUechTlRmm3hGoTGIuEgEe8Gc'),
+    'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default=''),
+    'API_KEY': env('CLOUDINARY_API_KEY', default=''),
+    'API_SECRET': env('CLOUDINARY_API_SECRET', default=''),
 }
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
