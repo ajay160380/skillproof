@@ -52,38 +52,33 @@ def extract_skills_via_ai(text: str) -> list:
         client = Groq(api_key=settings.GROQ_API_KEY)
         
         prompt = f"""
-        Extract a clean list of the top 3 to 5 most important HARD technical skills (e.g., programming languages, frameworks, core technical tools) mentioned in this resume text.
-        Do NOT include generic soft skills like "Adaptability", "Time Management", "Communication", or "Problem-solving".
-        Do NOT include trivial or tiny skills.
-        Return ONLY a JSON array of skill strings, no markdown, no explanation, maximum of 5 skills, ordered by how prominently they're featured:
+        Extract a comprehensive list of the most important HARD technical skills (e.g., programming languages, frameworks, core technical tools, databases, cloud platforms) mentioned in this resume text.
+        Do NOT include generic soft skills. Extract up to 15 distinct technical skills.
+        Return ONLY a JSON array of skill strings, nothing else. Example: ["Python", "React", "AWS"]
 
-        Resume text: {text[:5000]}  # limit text to avoid huge context
-
-        Example output format: ["Python", "React", "AWS", "SQL", "Docker"]
+        Resume text: {text[:5000]}
         """
         
         completion = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "user", "content": prompt}
             ],
             temperature=0.0,
-            max_tokens=200,
+            max_tokens=300,
         )
         
         response_text = completion.choices[0].message.content.strip()
         
-        # Clean up any potential markdown formatting the AI might still include
-        if response_text.startswith("```json"):
-            response_text = response_text[7:]
-        if response_text.startswith("```"):
-            response_text = response_text[3:]
-        if response_text.endswith("```"):
-            response_text = response_text[:-3]
-            
-        skills_list = json.loads(response_text)
-        if isinstance(skills_list, list):
-            return skills_list[:12]
+        # Robust extraction: find the first '[' and last ']'
+        start = response_text.find('[')
+        end = response_text.rfind(']')
+        if start != -1 and end != -1 and end > start:
+            json_str = response_text[start:end+1]
+            skills_list = json.loads(json_str)
+            if isinstance(skills_list, list) and len(skills_list) > 0:
+                return skills_list[:15]
+                
         return extract_skills_via_keywords(text)
     except Exception as e:
         print(f"AI extraction failed: {e}")

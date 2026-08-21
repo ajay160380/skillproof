@@ -2,9 +2,6 @@ from django.db import models
 from django.conf import settings
 
 class PortfolioProject(models.Model):
-    """
-    Model representing a portfolio project created by a user.
-    """
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='portfolio_projects')
     title = models.CharField(max_length=255)
     description = models.TextField()

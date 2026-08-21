@@ -3,10 +3,6 @@ from .models import Conversation, Message
 from accounts.serializers import UserSerializer
 
 class MessageSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Message model.
-    Read-only fields for sender and timestamp to prevent tampering.
-    """
     sender = UserSerializer(read_only=True)
     
     class Meta:

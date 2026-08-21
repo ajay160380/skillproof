@@ -1,7 +1,3 @@
-"""
-URL configurations for the network app, defining endpoints for searching,
-following users, and interacting with posts and comments.
-"""
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (

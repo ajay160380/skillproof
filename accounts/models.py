@@ -2,10 +2,6 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
-    """
-    Custom User model for SkillProof.
-    Supports role-based access for Candidates, Recruiters, and Admins.
-    """
     ROLE_CHOICES = (
         ('candidate', 'Candidate'),
         ('recruiter', 'Recruiter'),
