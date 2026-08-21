@@ -126,7 +126,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Cloudinary Storage (for persistent file uploads on Render)
 CLOUDINARY_STORAGE = {
     'CLOUD_NAME': env('CLOUDINARY_CLOUD_NAME', default='qf6wbumi'),
-    'API_KEY': env('CLOUDINARY_API_KEY', default='274489168274869'),
+    'API_KEY': env('CLOUDINARY_API_KEY', default='274489169274869'),
     'API_SECRET': env('CLOUDINARY_API_SECRET', default='sCPUechTlRmm3hGoTGIuEgEe8Gc'),
 }
 if not DEBUG:
@@ -149,17 +149,17 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# REST Framework settings
+# REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 12,
-    'EXCEPTION_HANDLER': 'config.exceptions.custom_exception_handler',
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
 }
 
-# Simple JWT settings
+# Simple JWT Settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -185,5 +185,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
-if DEBUG:
-    CELERY_TASK_ALWAYS_EAGER = True
+# Run Celery tasks synchronously (in-process) on free tiers so NO Redis is needed!
+# This prevents exhausting Redis command quotas.
+CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', default=True)
+CELERY_TASK_EAGER_PROPAGATES = True
