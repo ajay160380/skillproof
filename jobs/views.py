@@ -255,3 +255,35 @@ class RespondInterviewView(APIView):
         interview.save()
         
         return Response(InterviewSerializer(interview).data, status=status.HTTP_200_OK)
+
+class AIGenerateJobDescriptionView(APIView):
+    permission_classes = [IsRecruiter]
+
+    def post(self, request):
+        role_title = request.data.get('role_title')
+        company_name = request.data.get('company_name', '')
+        
+        if not role_title:
+            return Response({'error': 'Role title is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            from groq import Groq
+            from django.conf import settings
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            
+            prompt = f"Write a professional and engaging job description for the role of '{role_title}' at '{company_name}'. Include responsibilities and requirements. Keep it under 200 words."
+            
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=300,
+            )
+            
+            description = completion.choices[0].message.content.strip()
+            return Response({'description': description})
+        except Exception as e:
+            return Response({'error': str(e), 'description': f"We are looking for a skilled {role_title} to join {company_name}. You will be responsible for building high-quality products and collaborating with our team."})
+
