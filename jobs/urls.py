@@ -4,12 +4,14 @@ from .views import (
     JobProgressView, RecruiterJobListView, RecruiterJobApplicantsView,
     CompanyRequirementView, PublicCompanyRequirementView,
     TalentMatchView, SendInviteView, MyInvitesView,
-    ProposeInterviewView, MyInterviewsView, RespondInterviewView
+    ProposeInterviewView, MyInterviewsView, RespondInterviewView,
+    AIGenerateJobDescriptionView
 )
 
 urlpatterns = [
     path('', JobListView.as_view(), name='job-list'),
     path('create/', JobCreateView.as_view(), name='job-create'),
+    path('generate-description/', AIGenerateJobDescriptionView.as_view(), name='job-generate-description'),
     path('my-listings/', RecruiterJobListView.as_view(), name='recruiter-jobs'),
     path('my-listings/<int:pk>/applicants/', RecruiterJobApplicantsView.as_view(), name='recruiter-job-applicants'),
     path('company-requirements/', CompanyRequirementView.as_view(), name='company-requirements'),
