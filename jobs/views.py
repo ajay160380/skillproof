@@ -287,3 +287,32 @@ class AIGenerateJobDescriptionView(APIView):
         except Exception as e:
             return Response({'error': str(e), 'description': f"We are looking for a skilled {role_title} to join {company_name}. You will be responsible for building high-quality products and collaborating with our team."})
 
+class AIGenerateInterviewPrepView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        role_title = request.data.get('role_title', 'this role')
+        description = request.data.get('description', '')
+        
+        try:
+            from groq import Groq
+            from django.conf import settings
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            
+            prompt = f"Based on the following job description for '{role_title}', generate 3 key interview questions the candidate should prepare for, and provide a brief tip for answering each. Keep it encouraging and concise.\n\nDescription:\n{description[:1000]}"
+            
+            completion = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=400,
+            )
+            
+            prep_guide = completion.choices[0].message.content.strip()
+            return Response({'prep_guide': prep_guide})
+        except Exception as e:
+            return Response({
+                'prep_guide': f"1. Tell me about a time you overcame a technical challenge related to {role_title}.\n2. Why are you interested in this role?\n3. How do you keep your skills updated?"
+            })
