@@ -54,12 +54,19 @@ class SubmitAttemptView(APIView):
         # Handle audio file upload for communication tests
         audio_file = request.FILES.get('audio_file')
         if audio_file:
-            from django.core.files.storage import default_storage
+            import os
+            from django.conf import settings as django_settings
+            recordings_dir = os.path.join(django_settings.MEDIA_ROOT, 'recordings')
+            os.makedirs(recordings_dir, exist_ok=True)
             
-            file_name = f'recordings/attempt_{attempt.id}_{audio_file.name}'
-            saved_path = default_storage.save(file_name, audio_file)
+            file_name = f'attempt_{attempt.id}_{audio_file.name}'
+            file_path = os.path.join(recordings_dir, file_name)
             
-            attempt.recording_url = default_storage.url(saved_path)
+            with open(file_path, 'wb+') as destination:
+                for chunk in audio_file.chunks():
+                    destination.write(chunk)
+            
+            attempt.recording_url = file_path
         
         # Handle other fields from JSON payload
         serializer = SubmitAttemptSerializer(data=request.data)
@@ -76,7 +83,7 @@ class SubmitAttemptView(APIView):
                     import json
                     try:
                         cheating_flags = json.loads(request.data['cheating_flags'])
-                    except (ValueError, json.JSONDecodeError):
+                    except:
                         pass
                 if cheating_flags:
                     keystrokes['frontend_cheating_flags'] = cheating_flags
@@ -174,3 +181,38 @@ class AnalyticsView(APIView):
             'rank_percentile': rank_percentile,
             'matching_jobs_count': matching_jobs_count
         })
+
+class SkillInsightsView(APIView):
+    """
+    AI-powered Skill Gap Analyzer & Personalized Learning Roadmap.
+    Returns cached insights or generates fresh ones when the user
+    has completed new assessments since last generation.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role != 'candidate':
+            return Response(
+                {"error": "Skill insights are only available for candidates."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        from .insights import generate_skill_insights
+        try:
+            result = generate_skill_insights(user)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Skill insights generation error: {e}")
+            return Response(
+                {"error": "Failed to generate skill insights. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        if result is None:
+            return Response({
+                "empty": True,
+                "message": "Complete at least one assessment to unlock your personalized Skill Insights."
+            })
+
+        return Response(result)
