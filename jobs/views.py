@@ -1,13 +1,21 @@
 from rest_framework import generics, status, filters
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.shortcuts import get_object_or_404
-from .models import JobListing, JobApplication
-from .serializers import JobListingSerializer, JobApplicationSerializer, JobApplicantSerializer
+from django.contrib.auth import get_user_model
+from django.db.models import F, Prefetch
+from .models import JobListing, JobApplication, CompanyRequirement, DirectInvite, Interview
+from .serializers import (
+    JobListingSerializer, JobApplicationSerializer, JobApplicantSerializer,
+    CompanyRequirementSerializer, DirectInviteSerializer, InterviewSerializer
+)
 from marketplace.permissions import IsRecruiter
 from django.utils import timezone
 from .services import update_job_applications
+from badges.models import UserStats, Badge
+
+User = get_user_model()
 
 class JobCreateView(generics.CreateAPIView):
     serializer_class = JobListingSerializer
@@ -87,11 +95,11 @@ class RecruiterJobApplicantsView(generics.ListAPIView):
     def get_queryset(self):
         job_id = self.kwargs.get('pk')
         job = get_object_or_404(JobListing, pk=job_id, recruiter=self.request.user)
-        from django.db.models import F
-        return JobApplication.objects.filter(job_listing=job).order_by(F('overall_fit_score').desc(nulls_last=True), '-completed_at')
+        return JobApplication.objects.filter(job_listing=job).select_related(
+            'candidate'
+        ).order_by(F('overall_fit_score').desc(nulls_last=True), '-completed_at')
 
-from .models import CompanyRequirement
-from .serializers import CompanyRequirementSerializer
+
 
 class CompanyRequirementView(APIView):
     permission_classes = [IsRecruiter]
@@ -121,10 +129,6 @@ class PublicCompanyRequirementView(generics.RetrieveAPIView):
         recruiter_id = self.kwargs.get('recruiter_id')
         return get_object_or_404(CompanyRequirement, recruiter_id=recruiter_id)
 
-from badges.models import UserStats, Badge
-from .models import DirectInvite
-from .serializers import DirectInviteSerializer
-from django.db.models import Prefetch
 
 class TalentMatchView(APIView):
     permission_classes = [IsRecruiter]
@@ -133,10 +137,11 @@ class TalentMatchView(APIView):
         skill_id = request.query_params.get('skill_id')
         min_score = request.query_params.get('min_score', 0)
         
-        candidates_query = UserStats.objects.exclude(user__role='recruiter')
+        candidates_query = UserStats.objects.exclude(
+            user__role='recruiter'
+        ).select_related('user')
         
         if skill_id:
-            # Filter users who have a badge in this skill category with >= min_score
             candidates_query = candidates_query.filter(
                 user__badges__skill_category_id=skill_id,
                 user__badges__score__overall_score__gte=min_score
@@ -144,23 +149,37 @@ class TalentMatchView(APIView):
             
         candidates_query = candidates_query.order_by('-total_points')[:50]
         
+        # Prefetch top 3 badges for all candidates at once (avoids N+1)
+        user_ids = [stat.user_id for stat in candidates_query]
+        top_badges_by_user = {}
+        if user_ids:
+            all_badges = Badge.objects.filter(
+                user_id__in=user_ids
+            ).select_related(
+                'skill_category', 'score'
+            ).order_by('user_id', '-score__overall_score')
+            
+            for badge in all_badges:
+                uid = badge.user_id
+                if uid not in top_badges_by_user:
+                    top_badges_by_user[uid] = []
+                if len(top_badges_by_user[uid]) < 3:
+                    top_badges_by_user[uid].append({
+                        'skill_name': badge.skill_category.name,
+                        'badge_level': badge.badge_level,
+                        'score': badge.score.overall_score
+                    })
+        
         results = []
         for stat in candidates_query:
-            # get their top badges
-            badges = Badge.objects.filter(user=stat.user).order_by('-score__overall_score')[:3]
-            badges_data = [{
-                'skill_name': b.skill_category.name,
-                'badge_level': b.badge_level,
-                'score': b.score.overall_score if hasattr(b, 'score') and b.score else 0
-            } for b in badges]
-            
+
             results.append({
                 'user_id': stat.user.id,
                 'name': stat.user.full_name,
                 'email': stat.user.email,
                 'total_points': stat.total_points,
                 'global_rank': stat.global_rank,
-                'top_skills': badges_data
+                'top_skills': top_badges_by_user.get(stat.user_id, [])
             })
             
         return Response(results)
@@ -172,9 +191,6 @@ class SendInviteView(APIView):
         candidate_id = request.data.get('candidate_id')
         job_listing_id = request.data.get('job_listing_id')
         message = request.data.get('message', '')
-        
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         
         candidate = get_object_or_404(User, id=candidate_id, role='candidate')
         job_listing = None
@@ -200,9 +216,6 @@ class MyInvitesView(generics.ListAPIView):
             return DirectInvite.objects.filter(recruiter=user).order_by('-created_at')
         return DirectInvite.objects.filter(candidate=user).order_by('-created_at')
 
-from .models import Interview
-from .serializers import InterviewSerializer
-from rest_framework.permissions import AllowAny
 
 class ProposeInterviewView(APIView):
     permission_classes = [IsRecruiter]
@@ -212,9 +225,6 @@ class ProposeInterviewView(APIView):
         job_listing_id = request.data.get('job_listing_id')
         proposed_time = request.data.get('proposed_time')
         message = request.data.get('message', '')
-        
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
         
         candidate = get_object_or_404(User, id=candidate_id, role='candidate')
         job_listing = None

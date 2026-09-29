@@ -22,6 +22,13 @@ class TestAttempt(models.Model):
     keystroke_log = models.JSONField(null=True, blank=True)
     raw_transcript = models.TextField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'status'], name='idx_attempt_user_status'),
+            models.Index(fields=['status'], name='idx_attempt_status'),
+            models.Index(fields=['user', '-started_at'], name='idx_attempt_user_date'),
+        ]
+
     def __str__(self):
         return f"{self.user.email} - {self.test.title} ({self.status})"
 

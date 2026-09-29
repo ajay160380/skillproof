@@ -1,5 +1,9 @@
-import random
+import json
+import logging
 from django.utils import timezone
+from django.db.models import Avg, Count
+from django.db.models.functions import TruncMonth
+from django.core.cache import cache
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -10,19 +14,27 @@ from .serializers import TestAttemptSerializer, StartAttemptSerializer, SubmitAt
 from skills.models import SkillTest
 from .tasks import process_test_attempt
 
+logger = logging.getLogger(__name__)
+
 class MyAttemptsListView(generics.ListAPIView):
     serializer_class = TestAttemptSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return TestAttempt.objects.filter(user=self.request.user).order_by('-started_at')
+        return TestAttempt.objects.filter(
+            user=self.request.user
+        ).select_related(
+            'test', 'test__category', 'score'
+        ).order_by('-started_at')
 
 class AttemptDetailView(generics.RetrieveAPIView):
     serializer_class = TestAttemptSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return TestAttempt.objects.filter(user=self.request.user)
+        return TestAttempt.objects.filter(
+            user=self.request.user
+        ).select_related('test', 'test__category', 'score')
 
 class StartAttemptView(APIView):
     permission_classes = [IsAuthenticated]
@@ -80,10 +92,9 @@ class SubmitAttemptView(APIView):
                 cheating_flags = serializer.validated_data.get('cheating_flags')
                 # Also check request.data for 'cheating_flags' in case it came as a string (FormData)
                 if not cheating_flags and 'cheating_flags' in request.data:
-                    import json
                     try:
                         cheating_flags = json.loads(request.data['cheating_flags'])
-                    except:
+                    except (json.JSONDecodeError, ValueError, TypeError):
                         pass
                 if cheating_flags:
                     keystrokes['frontend_cheating_flags'] = cheating_flags
@@ -110,14 +121,15 @@ class StatusCheckView(APIView):
         attempt = get_object_or_404(TestAttempt, pk=pk, user=request.user)
         return Response({'status': attempt.status})
 
-from django.db.models import Avg, Count
-from django.db.models.functions import TruncMonth
-
 class AnalyticsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
+        cache_key = f'analytics_user_{user.id}'
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)
         
         # Monthly score trend
         monthly_trends = SkillScore.objects.filter(attempt__user=user).annotate(
@@ -155,8 +167,6 @@ class AnalyticsView(APIView):
             better_count = sum(1 for avg in all_avgs if avg > user_avg)
             total_users = len(all_avgs)
             if total_users > 1:
-                # Top X% (e.g., if 1 out of 10 is better, you are in top 10%)
-                # +1 so if you are the absolute best, you are Top 1%. If you are worst, Top 100%
                 rank_percentile = max(1, int((better_count / total_users) * 100))
             else:
                 rank_percentile = 1
@@ -174,13 +184,17 @@ class AnalyticsView(APIView):
             required_tests__in=passed_tests
         ).distinct().count()
 
-        return Response({
+        result = {
             'trends': trends,
             'radar': radar,
             'total_tests': sum(item['count'] for item in skills) if skills else 0,
             'rank_percentile': rank_percentile,
             'matching_jobs_count': matching_jobs_count
-        })
+        }
+        
+        # Cache for 60 seconds to reduce DB load on repeated dashboard visits
+        cache.set(cache_key, result, 60)
+        return Response(result)
 
 class SkillInsightsView(APIView):
     """
