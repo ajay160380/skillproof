@@ -37,12 +37,25 @@ class ResumeUploadView(generics.CreateAPIView):
                         os.remove(tmp_path)
             except Exception as e:
                 print(f"Direct text extraction error during upload: {e}")
+            finally:
+                try:
+                    uploaded_file.seek(0)
+                except Exception:
+                    pass
                 
         resume = serializer.save(user=request.user, extracted_text=extracted_text)
         
-        # Dispatch Celery task
-        process_resume_skills.delay(resume.id)
+        # Dispatch task to extract skills
+        try:
+            process_resume_skills.delay(resume.id)
+        except Exception as e:
+            print(f"Celery task dispatch warning: {e}, running synchronously...")
+            try:
+                process_resume_skills(resume.id)
+            except Exception as sync_err:
+                print(f"Synchronous resume processing error: {sync_err}")
         
+        resume.refresh_from_db()
         return Response(ResumeSerializer(resume).data, status=status.HTTP_201_CREATED)
 
 class ResumeViewFileView(generics.GenericAPIView):
