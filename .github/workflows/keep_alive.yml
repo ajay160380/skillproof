@@ -1,0 +1,16 @@
+name: Keep Render Backend Awake
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free instance spin-down
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Render Health Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API
+        run: |
+          curl -s -f -m 25 "https://skillproof-backend-3857.onrender.com/api/health/" || echo "Render pinged (waking or ok)"
