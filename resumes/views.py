@@ -43,6 +43,9 @@ class ResumeUploadView(generics.CreateAPIView):
                 except Exception:
                     pass
                 
+        # Clean up any old resumes for this user so they don't linger
+        Resume.objects.filter(user=request.user).delete()
+
         resume = serializer.save(user=request.user, extracted_text=extracted_text)
         
         # Dispatch task to extract skills
@@ -68,6 +71,22 @@ class ResumeViewFileView(generics.GenericAPIView):
         signed_url = get_resume_download_url(resume.file)
         return HttpResponseRedirect(signed_url)
 
+class ResumeReparseView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        resume = Resume.objects.filter(user=request.user).order_by('-uploaded_at').first()
+        if not resume:
+            return Response({"detail": "No resume found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            process_resume_skills(resume.id)
+            resume.refresh_from_db()
+        except Exception as e:
+            print(f"Reparse error: {e}")
+            
+        serializer = ResumeSerializer(resume)
+        return Response(serializer.data)
 
 class MyResumeView(generics.RetrieveAPIView):
     serializer_class = ResumeSerializer
@@ -80,6 +99,15 @@ class MyResumeView(generics.RetrieveAPIView):
         resume = self.get_object()
         if not resume:
             return Response({"detail": "No resume found."}, status=status.HTTP_404_NOT_FOUND)
+            
+        # Self-healing: if resume is failed or pending or has no skills, parse it now!
+        if resume.parsing_status != 'completed' or not resume.extracted_skills:
+            try:
+                process_resume_skills(resume.id)
+                resume.refresh_from_db()
+            except Exception as e:
+                print(f"Self-healing parse error: {e}")
+                
         serializer = self.get_serializer(resume)
         return Response(serializer.data)
 
