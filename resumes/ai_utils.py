@@ -50,10 +50,10 @@ def extract_skills_via_ai(text: str) -> list:
     if not settings.GROQ_API_KEY:
         return extract_skills_via_keywords(text)
         
-    models_to_try = ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]
+    models_to_try = ["llama3-70b-8192", "llama3-8b-8192", "mixtral-8x7b-32768"]
     
     try:
-        client = Groq(api_key=settings.GROQ_API_KEY)
+        client = Groq(api_key=settings.GROQ_API_KEY, timeout=15.0)
     except Exception as e:
         print(f"Failed to initialize Groq client: {e}")
         return extract_skills_via_keywords(text)
